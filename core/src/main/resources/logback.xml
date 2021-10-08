@@ -11,7 +11,7 @@
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
             <layout class="com.sequenceiq.cloudbreak.logger.MaskingPatternLayout">
-                <pattern>%date{ISO8601} [%thread] %method:%line %-5level %logger{5} - [type:%X{resourceType:-springLog}] [crn:%X{resourceCrn:-}] [name:%X{resourceName:-}] [flow:%X{flowId:-}] [requestid:%X{requestId:-}] [tenant:%X{tenant:-}] [userCrn:%X{userCrn:-}] [environment:%X{environmentCrn:-}] [traceId:%X{traceId:-}] [spanId:%X{spanId:-}] %msg%n</pattern>
+                <pattern>%date{ISO8601} [%thread] %method:%line %-5level %logger{5} - [type:%X{resourceType:-springLog}] [crn:%X{resourceCrn:-}] [name:%X{resourceName:-}] [flow:%X{flowId:-}] [requestid:%X{requestId:-}] [tenant:%X{tenant:-}] [userCrn:%X{userCrn:-}] [environment:%X{environmentCrn:-}] [traceId:%X{traceId:-}] [spanId:%X{spanId:-}] ::: %msg%n</pattern>
             </layout>
         </encoder>
     </appender>
@@ -19,11 +19,11 @@
     <appender name="CB_FILE_BASED" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>cloudbreak-log/cloudbreak.log</file>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>${INTEGRATION_TEST_LOG_LEVEL:-OFF}</level>
+            <level>DEBUG</level>
         </filter>
         <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
             <layout class="com.sequenceiq.cloudbreak.logger.MaskingPatternLayout">
-                <pattern>%date{ISO8601} [%thread] %method:%line %-5level %logger{5} - [type:%X{resourceType:-springLog}] [crn:%X{resourceCrn:-}] [name:%X{resourceName:-}] [flow:%X{flowId:-}] [requestid:%X{requestId:-}] [tenant:%X{tenant:-}] [userCrn:%X{userCrn:-}] [environment:%X{environmentCrn:-}] [traceId:%X{traceId:-}] [spanId:%X{spanId:-}] %msg%n</pattern>
+                <pattern>%date{ISO8601} [%thread] %method:%line %-5level %logger{5} - [type:%X{resourceType:-springLog}] [crn:%X{resourceCrn:-}] [name:%X{resourceName:-}] [flow:%X{flowId:-}] [requestid:%X{requestId:-}] [tenant:%X{tenant:-}] [userCrn:%X{userCrn:-}] [environment:%X{environmentCrn:-}] [traceId:%X{traceId:-}] [spanId:%X{spanId:-}] ::: %msg%n</pattern>
             </layout>
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
@@ -34,6 +34,25 @@
         </triggeringPolicy>
     </appender>
 
+    <appender name="PERFLOG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>perflogger.log</file>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+        <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
+            <layout class="com.sequenceiq.cloudbreak.logger.MaskingPatternLayout">
+                <pattern>%date{ISO8601} [%thread] %method:%line %-5level %logger{5} - ::: %msg%n</pattern>
+            </layout>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <FileNamePattern>perflogger-%d{yyyy-MM-dd}.log</FileNamePattern>
+        </rollingPolicy>
+        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+            <MaxFileSize>1024MB</MaxFileSize>
+        </triggeringPolicy>
+    </appender>
+
+
     <root level="${CB_ROOT_LOG_LEVEL:-INFO}">
         <appender-ref ref="CB_FILE_BASED"/>
         <appender-ref ref="STDOUT"/>
@@ -42,6 +61,12 @@
     <logger name="com.sequenceiq" level="${CB_LOG_LEVEL:-DEBUG}" additivity="false">
         <appender-ref ref="CB_FILE_BASED"/>
         <appender-ref ref="STDOUT"/>
+    </logger>
+
+    <logger name="CB.PERFLOG" level="INFO" additivity="false">
+        <appender-ref ref="CB_FILE_BASED"/>
+        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="PERFLOG_FILE"/>
     </logger>
 
     <logger name="com.zaxxer" level="${CB_LOG_LEVEL:-INFO}" additivity="false">
