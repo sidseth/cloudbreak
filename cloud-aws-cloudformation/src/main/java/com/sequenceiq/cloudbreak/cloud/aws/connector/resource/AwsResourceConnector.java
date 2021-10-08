@@ -29,6 +29,8 @@ import com.sequenceiq.cloudbreak.cloud.model.Network;
 import com.sequenceiq.cloudbreak.cloud.model.TlsInfo;
 import com.sequenceiq.cloudbreak.cloud.model.database.CloudDatabaseServerSslCertificate;
 import com.sequenceiq.cloudbreak.cloud.notification.PersistenceNotifier;
+import com.sequenceiq.cloudbreak.logger.MDCUtils;
+import com.sequenceiq.cloudbreak.perflogger.PerfLogger;
 import com.sequenceiq.common.api.type.AdjustmentType;
 
 import freemarker.template.Configuration;
@@ -171,7 +173,12 @@ public class AwsResourceConnector implements ResourceConnector<Object> {
 
     @Override
     public List<CloudResourceStatus> upscale(AuthenticatedContext ac, CloudStack stack, List<CloudResource> resources) {
-        return awsUpscaleService.upscale(ac, stack, resources);
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "AWSResourceConnector.upscale");
+        try {
+            return awsUpscaleService.upscale(ac, stack, resources);
+        } finally {
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "AWSResourceConnector.upscale");
+        }
     }
 
     @Override

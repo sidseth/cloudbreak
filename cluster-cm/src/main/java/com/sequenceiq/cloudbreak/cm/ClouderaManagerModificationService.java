@@ -78,6 +78,8 @@ import com.sequenceiq.cloudbreak.domain.stack.cluster.ClusterComponent;
 import com.sequenceiq.cloudbreak.domain.stack.cluster.host.HostGroup;
 import com.sequenceiq.cloudbreak.domain.stack.instance.InstanceMetaData;
 import com.sequenceiq.cloudbreak.event.ResourceEvent;
+import com.sequenceiq.cloudbreak.logger.MDCUtils;
+import com.sequenceiq.cloudbreak.perflogger.PerfLogger;
 import com.sequenceiq.cloudbreak.polling.PollingResult;
 import com.sequenceiq.cloudbreak.service.CloudbreakException;
 import com.sequenceiq.cloudbreak.structuredevent.event.CloudbreakEventService;
@@ -165,23 +167,41 @@ public class ClouderaManagerModificationService implements ClusterModificationSe
         String hostGroupName = hostGroup.getName();
         try {
             LOGGER.debug("Starting cluster upscale. Host group: [{}].", hostGroupName);
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CMMS.upscaleCluster");
             String clusterName = stack.getName();
             Set<String> clusterHostnames = getClusterHostnamesFromCM(clustersResourceApi, clusterName);
             List<ApiHost> hosts = getHostsFromCM();
 
             LOGGER.debug("Processing outdated cluster hosts. Host group: [{}].", hostGroupName);
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CMMS.setHostRackIdForOutdatedClusterHosts");
             setHostRackIdForOutdatedClusterHosts(instanceMetaDatas, clusterHostnames, hosts);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CMMS.setHostRackIdForOutdatedClusterHosts");
 
             LOGGER.debug("Processing upscaled cluster hosts. Host group: [{}].", hostGroupName);
             Map<String, InstanceMetaData> upscaleInstancesMap = getInstancesMap(clusterHostnames, instanceMetaDatas, true);
             if (!upscaleInstancesMap.isEmpty()) {
+                PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CMMS.getHostsMap");
                 Map<String, ApiHost> upscaleHostsMap = getHostsMap(upscaleInstancesMap, hosts);
+                PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CMMS.getHostsMap");
+
+                PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CMMS.setHostRackIdBatch");
                 setHostRackIdBatch(upscaleInstancesMap, upscaleHostsMap);
+                PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CMMS.setHostRackIdBatch");
                 ApiHostRefList body = createUpscaledHostRefList(upscaleInstancesMap, upscaleHostsMap);
+
+                PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CMMS.addHosts");
                 clustersResourceApi.addHosts(clusterName, body);
+                PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CMMS.addHosts");
+
+                PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CMMS.activateParcels");
                 activateParcels(clustersResourceApi);
+                PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CMMS.activateParcels");
+
+                PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CMMS.applyHostGroupRolesOnUpscaledHosts");
                 applyHostGroupRolesOnUpscaledHosts(body, hostGroupName);
+                PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CMMS.applyHostGroupRolesOnUpscaledHosts");
             } else {
+                LOGGER.debug("ZZZ: When is this codepath triggered");
                 redistributeParcelsForRecovery();
                 activateParcels(clustersResourceApi);
                 clouderaManagerRoleRefreshService.refreshClusterRoles(apiClient, stack);
@@ -191,6 +211,8 @@ public class ClouderaManagerModificationService implements ClusterModificationSe
         } catch (ApiException e) {
             LOGGER.error(String.format("Failed to upscale. Host group: [%s]. Response: %s", hostGroupName, e.getResponseBody()), e);
             throw new CloudbreakException("Failed to upscale", e);
+        } finally {
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CMMS.upscaleCluster");
         }
     }
 
@@ -575,6 +597,8 @@ public class ClouderaManagerModificationService implements ClusterModificationSe
     }
 
     private void activateParcels(ClustersResourceApi clustersResourceApi) throws ApiException, CloudbreakException {
+        // TODO LLL: This name is wrong. There doesn't seemt o be any kind of invocation of an activateParcel command. This is purely a deployClientConfig,
+        //  Why is this happening at this stage, before even providing CM with the new roles / hosts.
         LOGGER.debug("Deploying client configurations on upscaled hosts.");
         List<ApiCommand> commands = clustersResourceApi.listActiveCommands(stack.getName(), SUMMARY).getItems();
         BigDecimal deployCommandId = clouderaManagerCommonCommandService.getDeployClientConfigCommandId(stack, clustersResourceApi, commands);

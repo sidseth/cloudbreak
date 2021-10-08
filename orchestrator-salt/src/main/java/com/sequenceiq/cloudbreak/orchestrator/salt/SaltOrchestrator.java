@@ -42,6 +42,7 @@ import com.sequenceiq.cloudbreak.common.exception.CloudbreakServiceException;
 import com.sequenceiq.cloudbreak.common.exception.NotFoundException;
 import com.sequenceiq.cloudbreak.common.type.RecipeExecutionPhase;
 import com.sequenceiq.cloudbreak.common.type.TemporaryStorage;
+import com.sequenceiq.cloudbreak.logger.MDCUtils;
 import com.sequenceiq.cloudbreak.orchestrator.OrchestratorBootstrap;
 import com.sequenceiq.cloudbreak.orchestrator.exception.CloudbreakOrchestratorException;
 import com.sequenceiq.cloudbreak.orchestrator.exception.CloudbreakOrchestratorFailedException;
@@ -89,6 +90,7 @@ import com.sequenceiq.cloudbreak.orchestrator.salt.states.SaltStates;
 import com.sequenceiq.cloudbreak.orchestrator.salt.utils.GrainsJsonPropertyUtil;
 import com.sequenceiq.cloudbreak.orchestrator.state.ExitCriteria;
 import com.sequenceiq.cloudbreak.orchestrator.state.ExitCriteriaModel;
+import com.sequenceiq.cloudbreak.perflogger.PerfLogger;
 import com.sequenceiq.cloudbreak.service.Retry;
 import com.sequenceiq.cloudbreak.util.CompressUtil;
 
@@ -324,18 +326,28 @@ public class SaltOrchestrator implements HostOrchestrator {
         Set<String> gatewayTargets = allGatewayConfigs.stream().filter(gc -> targets.stream().anyMatch(n -> gc.getPrivateAddress().equals(n.getPrivateIp())))
                 .map(GatewayConfig::getPrivateAddress).collect(Collectors.toSet());
         List<SaltConnector> saltConnectors = saltService.createSaltConnector(allGatewayConfigs);
+        LOGGER.debug("ZZZ: # salt connectors: {}", (saltConnectors == null ? 0 : saltConnectors.size()));
         try (SaltConnector sc = saltService.createSaltConnector(primaryGateway)) {
             if (!gatewayTargets.isEmpty()) {
                 LOGGER.info("Gateway targets are not empty, upload salt config: {}", gatewayTargets);
+                PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "bootstrapNewNodesOnHost.bootstrapNewNodes.uploadSaltConfig");
                 uploadSaltConfig(sc, gatewayTargets, stateConfigZip, exitModel);
+                PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "bootstrapNewNodesOnHost.bootstrapNewNodes.uploadSaltConfig");
                 params.setRestartNeeded(true);
             }
+
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "bootstrapNewNodesOnHost.bootstrapNewNodes.uploadSignKey");
             uploadSignKey(sc, primaryGateway, gatewayTargets, targets.stream().map(Node::getPrivateIp).collect(Collectors.toSet()), exitModel);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "bootstrapNewNodesOnHost.bootstrapNewNodes.uploadSignKey");
+
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "bootstrapNewNodesOnHost.bootstrapNewNodes.rebootstrap");
             // if there is a new salt master then re-bootstrap all nodes
             Set<Node> nodes = gatewayTargets.isEmpty() ? targets : allNodes;
+            LOGGER.debug("ZZZ: #Nodes for rebootstrap: {}, gatewayTargets={}", nodes.size(), gatewayTargets);
             OrchestratorBootstrap saltBootstrap = new SaltBootstrap(sc, saltConnectors, allGatewayConfigs, nodes, params);
             Callable<Boolean> saltBootstrapRunner = saltRunner.runner(saltBootstrap, exitCriteria, exitModel);
             saltBootstrapRunner.call();
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "bootstrapNewNodesOnHost.bootstrapNewNodes.rebootstrap");
         } catch (Exception e) {
             LOGGER.info("Error occurred during salt upscale", e);
             throw new CloudbreakOrchestratorFailedException(e.getMessage(), e);
@@ -348,38 +360,62 @@ public class SaltOrchestrator implements HostOrchestrator {
     @Override
     public void initServiceRun(List<GatewayConfig> allGateway, Set<Node> allNodes, Set<Node> reachableNodes, SaltConfig saltConfig,
             ExitCriteriaModel exitModel, String cloudPlatform) throws CloudbreakOrchestratorException {
+        LOGGER.debug("ZZZ: SaltOrchestrator.initServiceRun");
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "SaltOrchestrator.initServiceRun");
         GatewayConfig primaryGateway = saltService.getPrimaryGatewayConfig(allGateway);
         Set<String> gatewayTargetIpAddresses = getGatewayPrivateIps(allGateway);
         Set<String> gatewayTargetHostnames = getGatewayHostnames(allGateway);
         Set<String> serverHostname = Sets.newHashSet(primaryGateway.getHostname());
         Set<String> reachableHostnames = reachableNodes.stream().map(Node::getHostname).collect(Collectors.toSet());
         try (SaltConnector sc = saltService.createSaltConnector(primaryGateway)) {
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.pillarSaveNodes");
             OrchestratorBootstrap hostSave = new PillarSave(sc, gatewayTargetIpAddresses, allNodes);
             Callable<Boolean> saltPillarRunner = saltRunner.runner(hostSave, exitCriteria, exitModel);
             saltPillarRunner.call();
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.pillarSaveNodes");
 
+            // TODO LLL: Can all of these individual pillar save etc calls be collapsed into one. Similarly for the role additional calls.
+            //  Probably very marginal savings though - unless there's polling involved, which there should not be for these calls.
             savePillars(saltConfig, exitModel, gatewayTargetIpAddresses, sc);
 
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.setIpaMember");
             setAdMemberRoleIfNeeded(allNodes, saltConfig, exitModel, sc, reachableHostnames);
             setIpaMemberRoleIfNeeded(allNodes, saltConfig, exitModel, sc, reachableHostnames);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.setIpaMember");
 
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.knox");
             // knox
             if (primaryGateway.getKnoxGatewayEnabled()) {
                 saltCommandRunner.runModifyGrainCommand(sc, new GrainAddRunner(gatewayTargetHostnames, allNodes, "gateway"), exitModel, exitCriteria);
             }
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.knox");
 
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.postgresRoles");
             setPostgreRoleIfNeeded(allNodes, saltConfig, exitModel, sc, serverHostname);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.postgresRoles");
 
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.addClusterManagerRoles");
             addClusterManagerRoles(allNodes, exitModel, sc, serverHostname, reachableHostnames);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.addClusterManagerRoles");
 
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.kerberos");
             // kerberos
             if (saltConfig.getServicePillarConfig().containsKey("kerberos")) {
                 saltCommandRunner.runModifyGrainCommand(sc, new GrainAddRunner(reachableHostnames, allNodes, "kerberized"), exitModel, exitCriteria);
             }
-            grainUploader.uploadGrains(allNodes, saltConfig.getGrainsProperties(), exitModel, sc, exitCriteria);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.kerberos");
 
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.uploadGrains");
+            grainUploader.uploadGrains(allNodes, saltConfig.getGrainsProperties(), exitModel, sc, exitCriteria);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.uploadGrains");
+
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.syncAll");
             runSyncAll(sc, reachableHostnames, allNodes, exitModel);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.syncAll");
+
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.minUpdateRunner");
             saltCommandRunner.runSaltCommand(sc, new MineUpdateRunner(gatewayTargetHostnames, allNodes), exitModel, exitCriteria);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.minUpdateRunner");
         } catch (ExecutionException e) {
             LOGGER.warn("Error occurred during bootstrap", e);
             if (e.getCause() instanceof CloudbreakOrchestratorFailedException) {
@@ -390,14 +426,18 @@ public class SaltOrchestrator implements HostOrchestrator {
         } catch (Exception e) {
             LOGGER.warn("Error occurred during bootstrap", e);
             throw new CloudbreakOrchestratorFailedException(e.getMessage(), e);
+        } finally {
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "SaltOrchestrator.initServiceRun");
         }
     }
 
     private void savePillars(SaltConfig saltConfig, ExitCriteriaModel exitModel, Set<String> gatewayTargetIpAddresses, SaltConnector sc) throws Exception {
         for (Entry<String, SaltPillarProperties> propertiesEntry : saltConfig.getServicePillarConfig().entrySet()) {
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.pillar" + propertiesEntry.getValue().getPath());
             OrchestratorBootstrap pillarSave = new PillarSave(sc, gatewayTargetIpAddresses, propertiesEntry.getValue());
             Callable<Boolean> saltPillarRunner = saltRunner.runner(pillarSave, exitCriteria, exitModel);
             saltPillarRunner.call();
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.pillar" + propertiesEntry.getValue().getPath());
         }
     }
 
@@ -427,8 +467,13 @@ public class SaltOrchestrator implements HostOrchestrator {
 
     private void addClusterManagerRoles(Set<Node> allNodes, ExitCriteriaModel exitModel,
             SaltConnector sc, Set<String> serverHostnames, Set<String> reachableHostnames) throws Exception {
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.addClusterManagerRoles.manager_agent");
         saltCommandRunner.runModifyGrainCommand(sc, new GrainAddRunner(reachableHostnames, allNodes, "manager_agent"), exitModel, exitCriteria);
+        PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.addClusterManagerRoles.manager_agent");
+
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.addClusterManagerRoles.manager_server");
         saltCommandRunner.runModifyGrainCommand(sc, new GrainAddRunner(serverHostnames, allNodes, "manager_server"), exitModel, exitCriteria);
+        PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun.addClusterManagerRoles.manager_server");
     }
 
     private void setAdMemberRoleIfNeeded(Set<Node> allNodes, SaltConfig saltConfig, ExitCriteriaModel exitModel, SaltConnector sc,
@@ -450,11 +495,15 @@ public class SaltOrchestrator implements HostOrchestrator {
     public void runService(List<GatewayConfig> allGateway, Set<Node> allNodes, SaltConfig saltConfig, ExitCriteriaModel exitModel)
             throws CloudbreakOrchestratorException {
         LOGGER.debug("Run Services on nodes: {}", allNodes);
+        LOGGER.debug("ZZZ: SaltOrchestrator.runService");
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "SaltOrchestrator.runService");
         GatewayConfig primaryGateway = saltService.getPrimaryGatewayConfig(allGateway);
         try (SaltConnector sc = saltService.createSaltConnector(primaryGateway)) {
             retry.testWith2SecDelayMax5Times(() -> getRolesBeforeHighstateMagic(sc));
             Set<String> allHostnames = allNodes.stream().map(Node::getHostname).collect(Collectors.toSet());
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "SaltOrchestrator.runService.runNewService_highstate");
             runNewService(sc, new HighStateRunner(allHostnames, allNodes), exitModel);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "SaltOrchestrator.runService.runNewService_highstate");
         } catch (ExecutionException e) {
             LOGGER.info("Error occurred during bootstrap", e);
             if (e.getCause() instanceof CloudbreakOrchestratorFailedException) {
@@ -464,6 +513,8 @@ public class SaltOrchestrator implements HostOrchestrator {
         } catch (Exception e) {
             LOGGER.info("Error occurred during bootstrap", e);
             throw new CloudbreakOrchestratorFailedException(e.getMessage(), e);
+        } finally {
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "SaltOrchestrator.runService");
         }
         LOGGER.debug("Run services on nodes finished: {}", allNodes);
     }

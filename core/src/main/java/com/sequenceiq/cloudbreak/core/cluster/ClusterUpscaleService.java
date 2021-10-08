@@ -24,6 +24,8 @@ import com.sequenceiq.cloudbreak.domain.stack.instance.InstanceMetaData;
 import com.sequenceiq.cloudbreak.dto.KerberosConfig;
 import com.sequenceiq.cloudbreak.common.exception.NotFoundException;
 import com.sequenceiq.cloudbreak.kerberos.KerberosConfigService;
+import com.sequenceiq.cloudbreak.logger.MDCUtils;
+import com.sequenceiq.cloudbreak.perflogger.PerfLogger;
 import com.sequenceiq.cloudbreak.service.CloudbreakException;
 import com.sequenceiq.cloudbreak.service.cluster.ClusterApiConnectors;
 import com.sequenceiq.cloudbreak.service.cluster.ClusterService;
@@ -100,15 +102,20 @@ public class ClusterUpscaleService {
         HostGroup hostGroup = Optional.ofNullable(hostGroupService.getByClusterIdAndNameWithRecipes(stack.getCluster().getId(), hostGroupName))
                 .orElseThrow(NotFoundException.notFound("hostgroup", hostGroupName));
         Set<InstanceMetaData> runningInstanceMetaDataSet = hostGroup.getInstanceGroup().getRunningInstanceMetaDataSet();
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "ClusterUpscaleService.installServicesOnNewHosts.executePostAmbariStartRecipes");
         recipeEngine.executePostAmbariStartRecipes(stack, hostGroup.getRecipes());
+        PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "ClusterUpscaleService.installServicesOnNewHosts.executePostAmbariStartRecipes");
         ClusterApi connector = clusterApiConnectors.getConnector(stack);
         List<String> upscaledHosts = connector.upscaleCluster(hostGroup, runningInstanceMetaDataSet);
         if (shouldRestartServices(repair, restartServices, stack)) {
             try {
                 LOGGER.info("Trying to restart services");
+                PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "ClusterUpscaleService.installServicesOnNewHosts.restartAll");
                 connector.restartAll(false);
             } catch (RuntimeException e) {
                 LOGGER.info("Restart services failed", e);
+            } finally {
+                PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "ClusterUpscaleService.installServicesOnNewHosts.restartAll");
             }
         }
         runningInstanceMetaDataSet.stream()

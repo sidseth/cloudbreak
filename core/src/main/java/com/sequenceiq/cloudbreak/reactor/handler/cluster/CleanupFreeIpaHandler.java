@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import com.sequenceiq.cloudbreak.domain.stack.Stack;
+import com.sequenceiq.cloudbreak.logger.MDCUtils;
+import com.sequenceiq.cloudbreak.perflogger.PerfLogger;
 import com.sequenceiq.cloudbreak.reactor.api.event.StackEvent;
 import com.sequenceiq.cloudbreak.reactor.api.event.stack.CleanupFreeIpaEvent;
 import com.sequenceiq.cloudbreak.service.freeipa.FreeIpaCleanupService;
@@ -42,10 +44,14 @@ public class CleanupFreeIpaHandler implements EventHandler<CleanupFreeIpaEvent> 
     public void accept(Event<CleanupFreeIpaEvent> cleanupFreeIpaEvent) {
         CleanupFreeIpaEvent event = cleanupFreeIpaEvent.getData();
         try {
+            LOGGER.debug("ZZZ: Handle cleanup request for hosts: {} and IPs: {}", event.getHostNames(), event.getIps());
             LOGGER.debug("Handle cleanup request for hosts: {} and IPs: {}", event.getHostNames(), event.getIps());
+            LOGGER.debug("ZZZ: PerfContextString IPA cleanup.begin: {}", MDCUtils.getPerfContextString());
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CleanupFreeIpaHandler.accept");
             Stack stack = stackService.get(event.getResourceId());
             if (event.isRecover()) {
                 LOGGER.debug("Invoke cleanup on recover");
+                // TODO LLL Dig into FreeIpaCleanupService
                 freeIpaCleanupService.cleanupOnRecover(stack, event.getHostNames(), event.getIps());
             } else {
                 LOGGER.debug("Invoke cleanup on scale");
@@ -59,6 +65,8 @@ public class CleanupFreeIpaHandler implements EventHandler<CleanupFreeIpaEvent> 
                     event.getIps(), event.isRecover());
             Event<StackEvent> responseEvent = new Event<>(cleanupFreeIpaEvent.getHeaders(), response);
             eventBus.notify(CLEANUP_FREEIPA_FINISHED_EVENT.event(), responseEvent);
+            LOGGER.debug("ZZZ: PerfContextString IPA cleanup.end: {}", MDCUtils.getPerfContextString());
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CleanupFreeIpaHandler.accept");
         }
     }
 }

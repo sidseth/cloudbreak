@@ -23,6 +23,8 @@ import com.sequenceiq.cloudbreak.cloud.task.PollTaskFactory;
 import com.sequenceiq.cloudbreak.cloud.task.ResourcesStatePollerResult;
 import com.sequenceiq.cloudbreak.cloud.transform.ResourceLists;
 import com.sequenceiq.cloudbreak.cloud.transform.ResourcesStatePollerResults;
+import com.sequenceiq.cloudbreak.logger.MDCUtils;
+import com.sequenceiq.cloudbreak.perflogger.PerfLogger;
 
 import reactor.bus.Event;
 import reactor.bus.EventBus;
@@ -52,6 +54,9 @@ public class UpscaleStackHandler implements CloudPlatformEventHandler<UpscaleSta
     @Override
     public void accept(Event<UpscaleStackRequest> upscaleStackRequestEvent) {
         LOGGER.debug("Received event: {}", upscaleStackRequestEvent);
+
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "UpscaleStackHandler.accept");
+
         UpscaleStackRequest<UpscaleStackResult> request = upscaleStackRequestEvent.getData();
         CloudContext cloudContext = request.getCloudContext();
         try {
@@ -69,11 +74,14 @@ public class UpscaleStackHandler implements CloudPlatformEventHandler<UpscaleSta
             request.getResult().onNext(result);
             eventBus.notify(result.selector(), new Event<>(upscaleStackRequestEvent.getHeaders(), result));
             LOGGER.debug("Upscale successfully finished for {}", cloudContext);
+            // TODO LLL : Where does the disk attachment logic come into play?
         } catch (Exception e) {
-            LOGGER.error("Upscaling stack failed", e);
+            LOGGER.error("Upscaling stack failed for {}", cloudContext, e);
             UpscaleStackResult result = new UpscaleStackResult(e.getMessage(), e, request.getResourceId());
             request.getResult().onNext(result);
             eventBus.notify(CloudPlatformResult.failureSelector(UpscaleStackResult.class), new Event<>(upscaleStackRequestEvent.getHeaders(), result));
+        } finally {
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "UpscaleStackHandler.accept");
         }
     }
 

@@ -9,12 +9,14 @@ import org.springframework.stereotype.Component;
 import com.sequenceiq.cloudbreak.cluster.service.ClusterClientInitException;
 import com.sequenceiq.cloudbreak.common.event.Selectable;
 import com.sequenceiq.cloudbreak.core.cluster.ClusterBuilderService;
-import com.sequenceiq.flow.event.EventSelectorUtil;
+import com.sequenceiq.cloudbreak.logger.MDCUtils;
+import com.sequenceiq.cloudbreak.perflogger.PerfLogger;
 import com.sequenceiq.cloudbreak.reactor.api.event.cluster.InstallClusterFailed;
 import com.sequenceiq.cloudbreak.reactor.api.event.cluster.InstallClusterRequest;
 import com.sequenceiq.cloudbreak.reactor.api.event.cluster.InstallClusterSuccess;
-import com.sequenceiq.flow.reactor.api.handler.EventHandler;
 import com.sequenceiq.cloudbreak.service.CloudbreakException;
+import com.sequenceiq.flow.event.EventSelectorUtil;
+import com.sequenceiq.flow.reactor.api.handler.EventHandler;
 
 import reactor.bus.Event;
 import reactor.bus.EventBus;
@@ -39,12 +41,16 @@ public class InstallClusterHandler implements EventHandler<InstallClusterRequest
     public void accept(Event<InstallClusterRequest> event) {
         Long stackId = event.getData().getResourceId();
         Selectable response;
+        LOGGER.debug("ZZZ: InstallClusterHandler for {}", event.getData().getResourceId());
         try {
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "InstallClusterHandler.accept");
             clusterBuilderService.installCluster(stackId);
             response = new InstallClusterSuccess(stackId);
         } catch (RuntimeException | ClusterClientInitException | CloudbreakException e) {
             LOGGER.error("Failed to Install Cloudera Manager cluster: {}", e.getMessage());
             response = new InstallClusterFailed(stackId, e);
+        } finally {
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "InstallClusterHandler.accept");
         }
         eventBus.notify(response.selector(), new Event<>(event.getHeaders(), response));
     }

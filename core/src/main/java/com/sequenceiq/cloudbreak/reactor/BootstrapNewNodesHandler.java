@@ -7,6 +7,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import com.sequenceiq.cloudbreak.core.bootstrap.service.ClusterBootstrapper;
+import com.sequenceiq.cloudbreak.logger.MDCUtils;
+import com.sequenceiq.cloudbreak.perflogger.PerfLogger;
 import com.sequenceiq.flow.event.EventSelectorUtil;
 import com.sequenceiq.cloudbreak.reactor.api.event.resource.BootstrapNewNodesRequest;
 import com.sequenceiq.cloudbreak.reactor.api.event.resource.BootstrapNewNodesResult;
@@ -35,12 +37,16 @@ public class BootstrapNewNodesHandler implements EventHandler<BootstrapNewNodesR
     public void accept(Event<BootstrapNewNodesRequest> event) {
         BootstrapNewNodesRequest request = event.getData();
         BootstrapNewNodesResult result;
+        LOGGER.debug("ZZZ: BootstrapNewNodes for #hosts: {}", request.getUpscaleCandidateAddresses().size());
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "BootstrapNewNodesHandler.accept");
         try {
             LOGGER.info("BootstrapNewNodesRequest arrived with upscale candidates: {}", request.getUpscaleCandidateAddresses());
             clusterBootstrapper.bootstrapNewNodes(request.getResourceId(), request.getUpscaleCandidateAddresses());
             result = new BootstrapNewNodesResult(request);
         } catch (Exception e) {
             result = new BootstrapNewNodesResult(e.getMessage(), e, request);
+        } finally {
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "BootstrapNewNodesHandler.accept");
         }
         eventBus.notify(result.selector(), new Event<>(event.getHeaders(), result));
     }

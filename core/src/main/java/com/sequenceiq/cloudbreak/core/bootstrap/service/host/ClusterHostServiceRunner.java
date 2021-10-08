@@ -94,6 +94,7 @@ import com.sequenceiq.cloudbreak.orchestrator.model.Node;
 import com.sequenceiq.cloudbreak.orchestrator.model.SaltConfig;
 import com.sequenceiq.cloudbreak.orchestrator.model.SaltPillarProperties;
 import com.sequenceiq.cloudbreak.orchestrator.state.ExitCriteriaModel;
+import com.sequenceiq.cloudbreak.perflogger.PerfLogger;
 import com.sequenceiq.cloudbreak.service.CloudbreakException;
 import com.sequenceiq.cloudbreak.service.ComponentConfigProviderService;
 import com.sequenceiq.cloudbreak.service.GatewayConfigService;
@@ -250,23 +251,52 @@ public class ClusterHostServiceRunner {
     private FreeipaClientService freeipaClient;
 
     public void runClusterServices(@Nonnull Stack stack, @Nonnull Cluster cluster, Map<String, String> candidateAddresses) {
+        LOGGER.debug("ZZZ: runClusterServices for #candidates={}", candidateAddresses == null ? "NA": candidateAddresses.size());
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CHSR.runClusterServices");
         try {
             Set<Node> allNodes = stackUtil.collectNodes(stack);
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.getReachableNodes");
             Set<Node> reachableNodes = stackUtil.collectAndCheckReachableNodes(stack, candidateAddresses.keySet());
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.getReachableNodes");
+
             GatewayConfig primaryGatewayConfig = gatewayConfigService.getPrimaryGatewayConfig(stack);
             List<GatewayConfig> gatewayConfigs = gatewayConfigService.getAllGatewayConfigs(stack);
+
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.createSaltConfig");
             SaltConfig saltConfig = createSaltConfig(stack, cluster, primaryGatewayConfig, gatewayConfigs, allNodes, reachableNodes);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.createSaltConfig");
+
             ExitCriteriaModel exitCriteriaModel = clusterDeletionBasedModel(stack.getId(), cluster.getId());
+
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.modifyStartupMountRole");
             modifyStartupMountRole(stack, reachableNodes, GrainOperation.ADD);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.modifyStartupMountRole");
+
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun");
             hostOrchestrator.initServiceRun(gatewayConfigs, allNodes, reachableNodes, saltConfig, exitCriteriaModel, stack.getCloudPlatform());
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.initServiceRun");
+
+            // TODO LLL More details here
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.mountDisksVariant");
             if (CollectionUtils.isEmpty(candidateAddresses)) {
                 mountDisks.mountAllDisks(stack.getId());
             } else {
                 mountDisks.mountDisksOnNewNodes(stack.getId(), new HashSet<>(candidateAddresses.values()), allNodes);
             }
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.mountDisksVariant");
+
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.executePreClusterManagerRecipes");
             recipeEngine.executePreClusterManagerRecipes(stack, hostGroupService.getRecipesByCluster(cluster.getId()));
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.executePreClusterManagerRecipes");
+
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.runService");
             hostOrchestrator.runService(gatewayConfigs, reachableNodes, saltConfig, exitCriteriaModel);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.runService");
+
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.modifyStartupMountRole");
             modifyStartupMountRole(stack, reachableNodes, GrainOperation.REMOVE);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CHSR.runClusterServices.modifyStartupMountRole");
+
         } catch (CloudbreakOrchestratorCancelledException e) {
             throw new CancellationException(e.getMessage());
         } catch (CloudbreakOrchestratorException | IOException | CloudbreakException e) {
@@ -276,6 +306,8 @@ public class ClusterHostServiceRunner {
                     + e.getUnreachableNodes();
             LOGGER.error(errorMessage);
             throw new CloudbreakServiceException(errorMessage, e);
+        } finally {
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "CHSR.runClusterServices");
         }
     }
 

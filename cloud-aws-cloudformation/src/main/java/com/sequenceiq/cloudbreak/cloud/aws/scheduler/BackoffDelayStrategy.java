@@ -3,6 +3,9 @@ package com.sequenceiq.cloudbreak.cloud.aws.scheduler;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.amazonaws.waiters.PollingStrategy;
 import com.amazonaws.waiters.PollingStrategyContext;
 
@@ -15,10 +18,15 @@ public class BackoffDelayStrategy implements PollingStrategy.DelayStrategy {
 
     private static final int THOUSAND = 1000;
 
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(BackoffDelayStrategy.class);
+
+
     @Override
     public void delayBeforeNextRetry(PollingStrategyContext pollingStrategyContext) throws InterruptedException {
         int requestAttempted = pollingStrategyContext.getRetriesAttempted();
         Double secondToWait = Math.min(POLLING_INTERVAL * Math.pow(2, requestAttempted) + RANDOM.nextInt(POLLING_INTERVAL), MAX_POLLING_INTERVAL);
+        LOGGER.info("ZZZ: Polling attempt: {}, Sleeping for: {}s", requestAttempted, secondToWait);
         Thread.sleep(secondToWait.longValue() * THOUSAND);
     }
 }

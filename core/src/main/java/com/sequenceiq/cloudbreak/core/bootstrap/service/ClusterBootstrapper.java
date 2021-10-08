@@ -48,6 +48,7 @@ import com.sequenceiq.cloudbreak.domain.stack.Stack;
 import com.sequenceiq.cloudbreak.domain.stack.cluster.Cluster;
 import com.sequenceiq.cloudbreak.domain.stack.cluster.ClusterComponent;
 import com.sequenceiq.cloudbreak.domain.stack.instance.InstanceMetaData;
+import com.sequenceiq.cloudbreak.logger.MDCUtils;
 import com.sequenceiq.cloudbreak.orchestrator.exception.CloudbreakOrchestratorCancelledException;
 import com.sequenceiq.cloudbreak.orchestrator.exception.CloudbreakOrchestratorException;
 import com.sequenceiq.cloudbreak.orchestrator.exception.CloudbreakOrchestratorFailedException;
@@ -55,6 +56,7 @@ import com.sequenceiq.cloudbreak.orchestrator.host.HostOrchestrator;
 import com.sequenceiq.cloudbreak.orchestrator.model.BootstrapParams;
 import com.sequenceiq.cloudbreak.orchestrator.model.GatewayConfig;
 import com.sequenceiq.cloudbreak.orchestrator.model.Node;
+import com.sequenceiq.cloudbreak.perflogger.PerfLogger;
 import com.sequenceiq.cloudbreak.polling.PollingResult;
 import com.sequenceiq.cloudbreak.polling.PollingService;
 import com.sequenceiq.cloudbreak.service.CloudbreakException;
@@ -320,15 +322,29 @@ public class ClusterBootstrapper {
 
     public void bootstrapNewNodes(Long stackId, Set<String> upscaleCandidateAddresses) throws CloudbreakException {
         LOGGER.info("Bootstrap new nodes: {}", upscaleCandidateAddresses);
+        LOGGER.info("ZZZ: Bootstrap new nodes: {}", upscaleCandidateAddresses);
         Stack stack = stackService.getByIdWithListsInTransaction(stackId);
         Set<Node> nodes = new HashSet<>();
         Set<Node> allNodes = new HashSet<>();
 
         try {
+            // TODO LLL: Go into details for this operation. 5 odd minutes, without any logging.
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "bootstrapNewNodes.collectNodes");
             transactionService.required(() -> collectNodes(stackId, upscaleCandidateAddresses, stack, nodes, allNodes));
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "bootstrapNewNodes.collectNodes");
+
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "bootstrapNewNodes.getAllGatewayConfigs");
             List<GatewayConfig> allGatewayConfigs = gatewayConfigService.getAllGatewayConfigs(stack);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "bootstrapNewNodes.getAllGatewayConfigs");
+
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "bootstrapNewNodes.cleanupOldSaltState");
             cleanupOldSaltState(allGatewayConfigs, nodes);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "bootstrapNewNodes.cleanupOldSaltState");
+
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "bootstrapNewNodes.bootstrapNewNodesOnHost");
             bootstrapNewNodesOnHost(stack, allGatewayConfigs, nodes, allNodes);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "bootstrapNewNodes.bootstrapNewNodesOnHost");
+
         } catch (CloudbreakOrchestratorCancelledException e) {
             throw new CancellationException(e.getMessage());
         } catch (CloudbreakOrchestratorException e) {
@@ -392,13 +408,16 @@ public class ClusterBootstrapper {
         LOGGER.info("Bootstrap new nodes: {}", nodes);
         Cluster cluster = stack.getCluster();
         Boolean enableKnox = cluster.getGateway() != null;
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "bootstrapNewNodesOnHost.gatewayConfigs");
         for (InstanceMetaData gateway : stack.getNotTerminatedGatewayInstanceMetadata()) {
             GatewayConfig gatewayConfig = gatewayConfigService.getGatewayConfig(stack, gateway, enableKnox);
             PollingResult bootstrapApiPolling = hostBootstrapApiPollingService.pollWithAbsoluteTimeout(
                     hostBootstrapApiCheckerTask, new HostBootstrapApiContext(stack, gatewayConfig, hostOrchestrator), POLL_INTERVAL, MAX_POLLING_ATTEMPTS);
             validatePollingResultForCancellation(bootstrapApiPolling, "Polling of bootstrap API was cancelled.");
         }
+        PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "bootstrapNewNodesOnHost.gatewayConfigs");
 
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "bootstrapNewNodesOnHost.stateZips");
         byte[] stateZip = null;
         ClusterComponent stateComponent = clusterComponentProvider.getComponent(cluster.getId(), ComponentType.SALT_STATE);
         if (stateComponent != null) {
@@ -407,16 +426,22 @@ public class ClusterBootstrapper {
                 stateZip = Base64.decodeBase64(content);
             }
         }
+        PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "bootstrapNewNodesOnHost.stateZips");
         BootstrapParams params = createBootstrapParams(stack);
 
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "bootstrapNewNodesOnHost.bootstrapNewNodes");
         hostOrchestrator.bootstrapNewNodes(allGatewayConfigs, nodes, allNodes, stateZip, params, clusterDeletionBasedModel(stack.getId(), null));
+        PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "bootstrapNewNodesOnHost.bootstrapNewNodes");
 
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "bootstrapNewNodesOnHost.gatewayConfigs2");
         InstanceMetaData primaryGateway = stack.getPrimaryGatewayInstance();
         GatewayConfig gatewayConfig = gatewayConfigService.getGatewayConfig(stack, primaryGateway, enableKnox);
         PollingResult allNodesAvailabilityPolling = hostClusterAvailabilityPollingService
                 .pollWithAbsoluteTimeout(hostClusterAvailabilityCheckerTask,
                         new HostOrchestratorClusterContext(stack, hostOrchestrator, gatewayConfig, nodes), POLL_INTERVAL, MAX_POLLING_ATTEMPTS);
         validatePollingResultForCancellation(allNodesAvailabilityPolling, "Polling of new nodes availability was cancelled.");
+        PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "bootstrapNewNodesOnHost.gatewayConfigs2");
+
         if (TIMEOUT.equals(allNodesAvailabilityPolling)) {
             clusterBootstrapperErrorHandler.terminateFailedNodes(hostOrchestrator, null, stack, gatewayConfig, nodes);
         }

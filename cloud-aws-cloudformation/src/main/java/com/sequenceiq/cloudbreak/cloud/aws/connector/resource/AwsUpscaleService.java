@@ -42,6 +42,8 @@ import com.sequenceiq.cloudbreak.cloud.model.CloudStack;
 import com.sequenceiq.cloudbreak.cloud.model.Group;
 import com.sequenceiq.cloudbreak.cloud.model.ResourceStatus;
 import com.sequenceiq.cloudbreak.cloud.transform.CloudResourceHelper;
+import com.sequenceiq.cloudbreak.logger.MDCUtils;
+import com.sequenceiq.cloudbreak.perflogger.PerfLogger;
 import com.sequenceiq.common.api.type.CommonStatus;
 import com.sequenceiq.common.api.type.ResourceType;
 
@@ -85,31 +87,61 @@ public class AwsUpscaleService {
         String regionName = ac.getCloudContext().getLocation().getRegion().value();
         AwsCredentialView credentialView = new AwsCredentialView(ac.getCloudCredential());
 
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "AWSUpscaleService.createCloudFormationClient");
         AmazonCloudFormationClient cloudFormationClient = awsClient.createCloudFormationClient(credentialView, regionName);
+        PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "AWSUpscaleService.createCloudFormationClient");
+
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "AWSUpscaleService.createAutoScalingClient");
         AmazonAutoScalingClient amazonASClient = awsClient.createAutoScalingClient(credentialView, regionName);
+        PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "AWSUpscaleService.createAutoScalingClient");
+
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "AWSUpscaleService.createEc2Client");
         AmazonEc2Client amazonEC2Client = awsClient.createEc2Client(credentialView, regionName);
+        PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "AWSUpscaleService.createEc2Client");
 
         List<Group> scaledGroups = cloudResourceHelper.getScaledGroups(stack);
         Map<String, Group> desiredAutoscalingGroupsByName = getAutoScaleGroupsByNameFromCloudFormationTemplate(ac, cloudFormationClient, scaledGroups);
         LOGGER.info("Desired autoscaling groups: {}", desiredAutoscalingGroupsByName);
+
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "AWSUpscaleService.resumeAutoScaling");
         awsAutoScalingService.resumeAutoScaling(amazonASClient, desiredAutoscalingGroupsByName.keySet(), UPSCALE_PROCESSES);
+        PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "AWSUpscaleService.resumeAutoScaling");
+
+
         Map<String, Integer> originalAutoScalingGroupsBySize = getAutoScalingGroupsBySize(desiredAutoscalingGroupsByName.keySet(), amazonASClient);
         LOGGER.info("Update autoscaling groups for stack: {}", ac.getCloudContext().getName());
         Date timeBeforeASUpdate = new Date();
+
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "AWSUpscaleService.updateAutoScalingGroups");
         updateAutoscalingGroups(amazonASClient, desiredAutoscalingGroupsByName, originalAutoScalingGroupsBySize);
+        PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "AWSUpscaleService.updateAutoScalingGroups");
+
         List<String> knownInstances = getKnownInstancesByCloudbreak(stack);
         try {
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "AWSUpscaleService.scheduleStatusChecks");
             awsAutoScalingService.scheduleStatusChecks(scaledGroups, ac, cloudFormationClient, timeBeforeASUpdate, knownInstances);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "AWSUpscaleService.scheduleStatusChecks");
         } catch (AmazonAutoscalingFailed amazonAutoscalingFailed) {
             LOGGER.info("Amazon autoscaling group update failed", amazonAutoscalingFailed);
             recoverOriginalState(ac, stack, amazonASClient, desiredAutoscalingGroupsByName, originalAutoScalingGroupsBySize, amazonAutoscalingFailed);
             sendASGUpdateFailedMessage(amazonASClient, desiredAutoscalingGroupsByName, amazonAutoscalingFailed);
         }
         try {
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "AWSUpscaleService.suspendAutoScaling");
             awsAutoScalingService.suspendAutoScaling(ac, stack);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "AWSUpscaleService.suspendAutoScaling");
+
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "AWSUpscaleService.validateInstanceStatusesInScaledGroups");
             validateInstanceStatusesInScaledGroups(ac, amazonASClient, amazonEC2Client, cloudFormationClient, scaledGroups);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "AWSUpscaleService.validateInstanceStatusesInScaledGroups");
+
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "AWSUpscaleService.getInstanceCloudResources");
             List<CloudResource> instances = cfStackUtil.getInstanceCloudResources(ac, cloudFormationClient, amazonASClient, scaledGroups);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "AWSUpscaleService.getInstanceCloudResources");
+
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "AWSUpscaleService.associateElasticIpWithNewInstances");
             associateElasticIpWithNewInstances(stack, resources, cloudFormationClient, amazonEC2Client, scaledGroups, instances);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "AWSUpscaleService.associateElasticIpWithNewInstances");
 
             List<Group> groupsWithNewInstances = getGroupsWithNewInstances(scaledGroups);
             List<CloudResource> newInstances = getNewInstances(scaledGroups, instances);
@@ -117,8 +149,11 @@ public class AwsUpscaleService {
             List<CloudResource> networkResources = resources.stream()
                     .filter(cloudResource -> ResourceType.AWS_SUBNET.equals(cloudResource.getType()))
                     .collect(Collectors.toList());
+            // TODO LLL: Disk creation is set up inside this block. Not sure when actually executed.
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "AWSUpscaleService.buildComputeResourcesForUpscale");
             List<CloudResourceStatus> cloudResourceStatuses = awsComputeResourceService
                     .buildComputeResourcesForUpscale(ac, stack, groupsWithNewInstances, newInstances, reattachableVolumeSets, networkResources);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "AWSUpscaleService.buildComputeResourcesForUpscale");
 
             List<String> failedResources = cloudResourceStatuses.stream().map(CloudResourceStatus::getCloudResource)
                     .filter(cloudResource -> CommonStatus.FAILED == cloudResource.getStatus())
@@ -127,12 +162,20 @@ public class AwsUpscaleService {
             if (!failedResources.isEmpty()) {
                 throw new RuntimeException("Additional resource creation failed: " + failedResources);
             }
-            awsTaggingService.tagRootVolumes(ac, amazonEC2Client, instances, stack.getTags());
-            awsCloudWatchService.addCloudWatchAlarmsForSystemFailures(instances, regionName, credentialView);
 
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "AWSUpscaleService.tagRootVolumes");
+            awsTaggingService.tagRootVolumes(ac, amazonEC2Client, instances, stack.getTags());
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "AWSUpscaleService.tagRootVolumes");
+
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "AWSUpscaleService.addCloudWatchAlarmsForSystemFailures");
+            awsCloudWatchService.addCloudWatchAlarmsForSystemFailures(instances, regionName, credentialView);
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "AWSUpscaleService.addCloudWatchAlarmsForSystemFailures");
+
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "AWSUpscaleService.addLoadBalancerServices");
             for (CloudLoadBalancer loadBalancer : stack.getLoadBalancers()) {
                 cfStackUtil.addLoadBalancerTargets(ac, loadBalancer, newInstances);
             }
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "AWSUpscaleService.addLoadBalancerServices");
         } catch (RuntimeException runtimeException) {
             recoverOriginalState(ac, stack, amazonASClient, desiredAutoscalingGroupsByName, originalAutoScalingGroupsBySize, runtimeException);
             throw new CloudConnectorException(String.format("Failed to create some resource on AWS for upscaled nodes, please check your quotas on AWS. " +
