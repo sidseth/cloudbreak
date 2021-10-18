@@ -37,4 +37,12 @@ public class DistroXScaleV1Request implements JsonEntity {
     public void setDesiredCount(Integer desiredCount) {
         this.desiredCount = desiredCount;
     }
+
+    @Override
+    public String toString() {
+        return "DistroXScaleV1Request{" +
+                "group='" + group + '\'' +
+                ", desiredCount=" + desiredCount +
+                '}';
+    }
 }

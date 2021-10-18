@@ -13,6 +13,8 @@ import com.sequenceiq.cloudbreak.cloud.event.CloudPlatformResult;
 import com.sequenceiq.cloudbreak.cloud.event.resource.UpscaleStackValidationRequest;
 import com.sequenceiq.cloudbreak.cloud.event.resource.UpscaleStackValidationResult;
 import com.sequenceiq.cloudbreak.cloud.init.CloudPlatformConnectors;
+import com.sequenceiq.cloudbreak.logger.MDCUtils;
+import com.sequenceiq.cloudbreak.perflogger.PerfLogger;
 
 import reactor.bus.Event;
 import reactor.bus.EventBus;
@@ -35,6 +37,9 @@ public class UpscaleValidationHandler implements CloudPlatformEventHandler<Upsca
     @Override
     public void accept(Event<UpscaleStackValidationRequest> upscaleStackValidationRequestEvent) {
         LOGGER.debug("Received event: {}", upscaleStackValidationRequestEvent);
+        LOGGER.debug("ZZZ Received event: {}", upscaleStackValidationRequestEvent);
+
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "upscaleStackValidationRequestEvent");
         UpscaleStackValidationRequest<UpscaleStackValidationResult> request = upscaleStackValidationRequestEvent.getData();
         CloudContext cloudContext = request.getCloudContext();
         try {
@@ -50,6 +55,8 @@ public class UpscaleValidationHandler implements CloudPlatformEventHandler<Upsca
             request.getResult().onNext(result);
             eventBus.notify(CloudPlatformResult.failureSelector(UpscaleStackValidationResult.class),
                     new Event<>(upscaleStackValidationRequestEvent.getHeaders(), result));
+        } finally {
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "upscaleStackValidationRequestEvent");
         }
     }
 }

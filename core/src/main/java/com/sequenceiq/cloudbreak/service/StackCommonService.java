@@ -225,9 +225,11 @@ public class StackCommonService {
 
         FlowIdentifier flowIdentifier;
         if (scalingAdjustment > 0) {
+            LOGGER.info("ZZZ: Scaling adjustment > 0, updateStackJson: {}", updateStackJson);
             flowIdentifier = put(stack, updateStackJson);
         } else {
             UpdateClusterV4Request updateClusterJson = stackScaleV4RequestToUpdateClusterV4RequestConverter.convert(updateRequest);
+            LOGGER.info("ZZZ: Scaling adjustment ! >0, updateClusterJson: {}", updateClusterJson);
             workspaceService.get(workspaceId, user);
             flowIdentifier = clusterCommonService.put(stack.getResourceCrn(), updateClusterJson);
         }

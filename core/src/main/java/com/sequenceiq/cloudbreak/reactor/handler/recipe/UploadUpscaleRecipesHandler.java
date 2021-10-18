@@ -2,12 +2,16 @@ package com.sequenceiq.cloudbreak.reactor.handler.recipe;
 
 import javax.inject.Inject;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import com.sequenceiq.cloudbreak.core.cluster.ClusterUpscaleService;
-import com.sequenceiq.flow.event.EventSelectorUtil;
+import com.sequenceiq.cloudbreak.logger.MDCUtils;
+import com.sequenceiq.cloudbreak.perflogger.PerfLogger;
 import com.sequenceiq.cloudbreak.reactor.api.event.recipe.UploadUpscaleRecipesRequest;
 import com.sequenceiq.cloudbreak.reactor.api.event.recipe.UploadUpscaleRecipesResult;
+import com.sequenceiq.flow.event.EventSelectorUtil;
 import com.sequenceiq.flow.reactor.api.handler.EventHandler;
 
 import reactor.bus.Event;
@@ -15,6 +19,8 @@ import reactor.bus.EventBus;
 
 @Component
 public class UploadUpscaleRecipesHandler implements EventHandler<UploadUpscaleRecipesRequest> {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(UploadUpscaleRecipesHandler.class);
 
     @Inject
     private EventBus eventBus;
@@ -29,13 +35,17 @@ public class UploadUpscaleRecipesHandler implements EventHandler<UploadUpscaleRe
 
     @Override
     public void accept(Event<UploadUpscaleRecipesRequest> event) {
+        LOGGER.debug("ZZZ: UploadUpscaleRecipesHandler");
         UploadUpscaleRecipesRequest request = event.getData();
         UploadUpscaleRecipesResult result;
         try {
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "UploadUpscaleRecipesHandler");
             clusterUpscaleService.uploadRecipesOnNewHosts(request.getResourceId(), request.getHostGroupName());
             result = new UploadUpscaleRecipesResult(request);
         } catch (Exception e) {
             result = new UploadUpscaleRecipesResult(e.getMessage(), e, request);
+        } finally {
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "UploadUpscaleRecipesHandler");
         }
         eventBus.notify(result.selector(), new Event<>(event.getHeaders(), result));
     }

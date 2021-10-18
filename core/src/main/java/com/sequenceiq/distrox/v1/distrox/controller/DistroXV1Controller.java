@@ -322,6 +322,7 @@ public class DistroXV1Controller implements DistroXV1Endpoint {
     @Override
     @CheckPermissionByResourceName(action = AuthorizationResourceAction.SCALE_DATAHUB)
     public FlowIdentifier putScalingByName(@ResourceName String name, @Valid DistroXScaleV1Request updateRequest) {
+        LOGGER.info("ZZZ: PutScalingByName. name={}, updateRequest={}", name, updateRequest);
         StackScaleV4Request stackScaleV4Request = scaleRequestConverter.convert(updateRequest);
         stackScaleV4Request.setStackId(stackOperations.getStackByName(name).getId());
         return stackOperations.putScaling(NameOrCrn.ofName(name), workspaceService.getForCurrentUser().getId(), stackScaleV4Request);
