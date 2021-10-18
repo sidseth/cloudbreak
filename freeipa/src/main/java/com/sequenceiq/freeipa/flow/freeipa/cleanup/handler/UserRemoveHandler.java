@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Component;
 
+import com.sequenceiq.cloudbreak.logger.MDCUtils;
+import com.sequenceiq.cloudbreak.perflogger.PerfLogger;
 import com.sequenceiq.flow.event.EventSelectorUtil;
 import com.sequenceiq.flow.reactor.api.handler.EventHandler;
 import com.sequenceiq.freeipa.flow.freeipa.cleanup.event.users.RemoveUsersRequest;
@@ -39,6 +41,8 @@ public class UserRemoveHandler implements EventHandler<RemoveUsersRequest> {
     @Override
     public void accept(Event<RemoveUsersRequest> event) {
         RemoveUsersRequest request = event.getData();
+        LOGGER.debug("ZZZ: Remove Users: {}", request);
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "userRemoveHandler");
         try {
             Pair<Set<String>, Map<String, String>> removeUsersResult =
                     cleanupService.removeUsers(request.getResourceId(), request.getUsers(), request.getClusterName(), request.getEnvironmentCrn());
@@ -52,6 +56,8 @@ public class UserRemoveHandler implements EventHandler<RemoveUsersRequest> {
             RemoveUsersResponse response = new RemoveUsersResponse(request, Collections.emptySet(), failureResult);
             eventBus.notify(EventSelectorUtil.failureSelector(RemoveUsersResponse.class),
                     new Event<>(event.getHeaders(), response));
+        } finally {
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "userRemoveHandler");
         }
     }
 }

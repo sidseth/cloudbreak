@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Component;
 
+import com.sequenceiq.cloudbreak.logger.MDCUtils;
+import com.sequenceiq.cloudbreak.perflogger.PerfLogger;
 import com.sequenceiq.flow.event.EventSelectorUtil;
 import com.sequenceiq.flow.reactor.api.handler.EventHandler;
 import com.sequenceiq.freeipa.flow.freeipa.cleanup.event.host.RemoveHostsRequest;
@@ -39,6 +41,8 @@ public class HostRemoveHandler implements EventHandler<RemoveHostsRequest> {
     @Override
     public void accept(Event<RemoveHostsRequest> event) {
         RemoveHostsRequest request = event.getData();
+        LOGGER.debug("ZZZ: RemoveHost: {}", request);
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "HostRemoveHandler");
         try {
             Pair<Set<String>, Map<String, String>> removeHostsResult =
                     cleanupService.removeHosts(request.getResourceId(), request.getHosts());
@@ -52,6 +56,8 @@ public class HostRemoveHandler implements EventHandler<RemoveHostsRequest> {
             RemoveHostsResponse response = new RemoveHostsResponse(request, Collections.emptySet(), failureResult);
             eventBus.notify(EventSelectorUtil.failureSelector(RemoveHostsResponse.class),
                     new Event<>(event.getHeaders(), response));
+        } finally {
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "HostRemoveHandler");
         }
     }
 }

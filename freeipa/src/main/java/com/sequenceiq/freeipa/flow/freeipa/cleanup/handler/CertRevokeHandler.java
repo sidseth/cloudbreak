@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Component;
 
+import com.sequenceiq.cloudbreak.logger.MDCUtils;
+import com.sequenceiq.cloudbreak.perflogger.PerfLogger;
 import com.sequenceiq.flow.event.EventSelectorUtil;
 import com.sequenceiq.flow.reactor.api.handler.EventHandler;
 import com.sequenceiq.freeipa.flow.freeipa.cleanup.event.cert.RevokeCertsRequest;
@@ -39,6 +41,8 @@ public class CertRevokeHandler implements EventHandler<RevokeCertsRequest> {
     @Override
     public void accept(Event<RevokeCertsRequest> event) {
         RevokeCertsRequest request = event.getData();
+        LOGGER.debug("ZZZ: Revoke Certs: {}", request);
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "certRevokeHandler");
         try {
             Pair<Set<String>, Map<String, String>> revokeCertResult = cleanupService.revokeCerts(request.getResourceId(), request.getHosts());
             RevokeCertsResponse response = new RevokeCertsResponse(request, revokeCertResult.getFirst(), revokeCertResult.getSecond());
@@ -51,6 +55,8 @@ public class CertRevokeHandler implements EventHandler<RevokeCertsRequest> {
             RevokeCertsResponse response = new RevokeCertsResponse(request, Collections.emptySet(), failureResult);
             eventBus.notify(EventSelectorUtil.failureSelector(RevokeCertsResponse.class),
                     new Event<>(event.getHeaders(), response));
+        } finally {
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "certRevokeHandler");
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.sequenceiq.freeipa.client;
 
+import java.io.IOException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.time.Instant;
@@ -17,14 +18,13 @@ import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.sequenceiq.freeipa.client.operation.UserDisableOperation;
-import com.sequenceiq.freeipa.client.operation.UserEnableOperation;
 import org.apache.commons.lang3.reflect.TypeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
 import com.googlecode.jsonrpc4j.JsonRpcHttpClient;
+import com.sequenceiq.cloudbreak.client.RPCResponse;
 import com.sequenceiq.cloudbreak.clusterproxy.ClusterProxyError;
 import com.sequenceiq.cloudbreak.clusterproxy.ClusterProxyException;
 import com.sequenceiq.cloudbreak.tracing.TracingUtil;
@@ -40,7 +40,6 @@ import com.sequenceiq.freeipa.client.model.Keytab;
 import com.sequenceiq.freeipa.client.model.PasswordPolicy;
 import com.sequenceiq.freeipa.client.model.Permission;
 import com.sequenceiq.freeipa.client.model.Privilege;
-import com.sequenceiq.cloudbreak.client.RPCResponse;
 import com.sequenceiq.freeipa.client.model.Role;
 import com.sequenceiq.freeipa.client.model.Service;
 import com.sequenceiq.freeipa.client.model.TopologySegment;
@@ -48,6 +47,8 @@ import com.sequenceiq.freeipa.client.model.TopologySuffix;
 import com.sequenceiq.freeipa.client.model.User;
 import com.sequenceiq.freeipa.client.operation.BatchOperation;
 import com.sequenceiq.freeipa.client.operation.UserAddOperation;
+import com.sequenceiq.freeipa.client.operation.UserDisableOperation;
+import com.sequenceiq.freeipa.client.operation.UserEnableOperation;
 import com.sequenceiq.freeipa.client.operation.UserModOperation;
 import com.sequenceiq.freeipa.client.operation.UserRemoveOperation;
 
@@ -400,6 +401,7 @@ public class FreeIpaClient {
     }
 
     public Service deleteService(String canonicalPrincipal) throws FreeIpaClientException {
+        LOGGER.info("ZZZ: Received deleteService request", new IOException());
         List<Object> flags = List.of(canonicalPrincipal);
         Map<String, Object> params = Map.of();
         return (Service) invoke("service_del", flags, params, Service.class).getResult();

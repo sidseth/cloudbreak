@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Component;
 
+import com.sequenceiq.cloudbreak.logger.MDCUtils;
+import com.sequenceiq.cloudbreak.perflogger.PerfLogger;
 import com.sequenceiq.flow.event.EventSelectorUtil;
 import com.sequenceiq.flow.reactor.api.handler.EventHandler;
 import com.sequenceiq.freeipa.flow.freeipa.cleanup.event.roles.RemoveRolesRequest;
@@ -39,6 +41,8 @@ public class RoleRemoveHandler implements EventHandler<RemoveRolesRequest> {
     @Override
     public void accept(Event<RemoveRolesRequest> event) {
         RemoveRolesRequest request = event.getData();
+        LOGGER.debug("ZZZ: Remove Roles: {}", request);
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "rolesRemoveHandler");
         try {
             Pair<Set<String>, Map<String, String>> removeRolesResult =
                     cleanupService.removeRoles(request.getResourceId(), request.getRoles());
@@ -52,6 +56,8 @@ public class RoleRemoveHandler implements EventHandler<RemoveRolesRequest> {
             RemoveRolesResponse response = new RemoveRolesResponse(request, Collections.emptySet(), failureResult);
             eventBus.notify(EventSelectorUtil.failureSelector(RemoveRolesResponse.class),
                     new Event<>(event.getHeaders(), response));
+        } finally {
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "rolesRemoveHandler");
         }
     }
 }

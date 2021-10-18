@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Component;
 
+import com.sequenceiq.cloudbreak.logger.MDCUtils;
+import com.sequenceiq.cloudbreak.perflogger.PerfLogger;
 import com.sequenceiq.flow.event.EventSelectorUtil;
 import com.sequenceiq.flow.reactor.api.handler.EventHandler;
 import com.sequenceiq.freeipa.flow.freeipa.cleanup.event.vault.RemoveVaultEntriesRequest;
@@ -39,6 +41,8 @@ public class VaultRemoveHandler implements EventHandler<RemoveVaultEntriesReques
     @Override
     public void accept(Event<RemoveVaultEntriesRequest> event) {
         RemoveVaultEntriesRequest request = event.getData();
+        LOGGER.debug("ZZZ: Remove vault: {}", request);
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "vaultRemoveHandler");
         try {
             Pair<Set<String>, Map<String, String>> removeVaultResult =
                     cleanupService.removeVaultEntries(request.getResourceId(), request.getHosts());
@@ -52,6 +56,8 @@ public class VaultRemoveHandler implements EventHandler<RemoveVaultEntriesReques
             RemoveVaultEntriesResponse response = new RemoveVaultEntriesResponse(request, Collections.emptySet(), failureResult);
             eventBus.notify(EventSelectorUtil.failureSelector(RemoveVaultEntriesResponse.class),
                     new Event<>(event.getHeaders(), response));
+        } finally {
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "vaultRemoveHandler");
         }
     }
 }

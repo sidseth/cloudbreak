@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Component;
 
+import com.sequenceiq.cloudbreak.logger.MDCUtils;
+import com.sequenceiq.cloudbreak.perflogger.PerfLogger;
 import com.sequenceiq.flow.event.EventSelectorUtil;
 import com.sequenceiq.flow.reactor.api.handler.EventHandler;
 import com.sequenceiq.freeipa.entity.FreeIpa;
@@ -44,6 +46,8 @@ public class DnsRemoveHandler implements EventHandler<RemoveDnsRequest> {
     @Override
     public void accept(Event<RemoveDnsRequest> event) {
         RemoveDnsRequest request = event.getData();
+        LOGGER.debug("ZZZ: RemoveDns: {}", request);
+        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "DnsRemoveHandler");
         try {
             FreeIpa freeIpa = freeIpaService.findByStackId(request.getResourceId());
             Pair<Set<String>, Map<String, String>> removeDnsResult =
@@ -58,6 +62,8 @@ public class DnsRemoveHandler implements EventHandler<RemoveDnsRequest> {
             RemoveDnsResponse response = new RemoveDnsResponse(request, Collections.emptySet(), failureResult);
             eventBus.notify(EventSelectorUtil.failureSelector(RemoveDnsResponse.class),
                     new Event<>(event.getHeaders(), response));
+        } finally {
+            PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "DnsRemoveHandler");
         }
     }
 }
