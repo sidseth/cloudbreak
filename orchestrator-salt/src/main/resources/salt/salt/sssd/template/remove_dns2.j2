@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -x
+
+HOSTNAME=$(hostname)
+FQDN=$(hostname -f)
+IPADDR=$(hostname -i)
+REVERSE_IP=$(hostname -i | awk -F. '{print $4"."$3"." $2"."$1}')
+
+ipa dnsrecord-del $(hostname -d). $(hostname) --del-all
+
+zone=$(hostname -i | awk -F. '{print $2"."$1}')
+zone="$zone.in-addr.arpa."
+
+idns=$(hostname -i | awk -F. '{print $4"."$3}')
+ipa dnsrecord-del $zone  $idns --del-all

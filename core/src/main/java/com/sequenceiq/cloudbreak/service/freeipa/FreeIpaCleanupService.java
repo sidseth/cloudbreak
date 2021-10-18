@@ -53,7 +53,9 @@ public class FreeIpaCleanupService {
 
     private static final Set<CleanupStep> STEPS_TO_SKIP_ON_RECOVER = Set.of(REMOVE_HOSTS, REMOVE_VAULT_ENTRIES, REMOVE_USERS, REMOVE_ROLES);
 
-    private static final Set<CleanupStep> STEPS_TO_SKIP_ON_SCALE = Set.of(REMOVE_USERS, REMOVE_ROLES);
+//    private static final Set<CleanupStep> STEPS_TO_SKIP_ON_SCALE = Set.of(REMOVE_USERS, REMOVE_ROLES);
+
+    private static final Set<CleanupStep> STEPS_TO_SKIP_ON_SCALE = Set.of(REVOKE_CERTS, REMOVE_HOSTS, REMOVE_VAULT_ENTRIES, REMOVE_USERS, REMOVE_ROLES);
 
     private static final Set<CleanupStep> STEPS_TO_SKIP_WHEN_DNS_ONLY = Set.of(REMOVE_HOSTS, REMOVE_VAULT_ENTRIES, REMOVE_USERS, REVOKE_CERTS, REMOVE_ROLES);
 

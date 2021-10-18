@@ -26,13 +26,29 @@ remove_cm_service_account:
 {%- endif %}
 {% endif %}
 
+/opt/salt/scripts/remove_dns2.sh:
+  file.managed:
+    - makedirs: True
+    - user: root
+    - group: root
+    - mode: 700
+    - source: salt://sssd/template/remove_dns2.j2
+    - template: jinja
+
 leave-ipa:
   cmd.run:
 {% if metadata.platform != 'YARN' %}
-    - name: echo $PW | kinit {{ salt['pillar.get']('sssd-ipa:principal') }} && ipa host-del {{ salt['grains.get']('fqdn') }} --updatedns && ipa-client-install --uninstall -U
+    - name: echo $PW | kinit {{ salt['pillar.get']('sssd-ipa:principal') }} &&  sh /opt/salt/scripts/remove_dns2.sh | tee -a /var/log/remove_dns2.log
 {% else %}
     - name: runuser -l root -c 'echo $PW | kinit {{ salt['pillar.get']('sssd-ipa:principal') }} && ipa host-del {{ salt['grains.get']('fqdn') }} --updatedns && ipa-client-install --uninstall -U'
 {% endif %}
+    - onlyif: ipa env
+    - env:
+        - PW: "{{salt['pillar.get']('sssd-ipa:password')}}"
+
+leave-ipa2:
+  cmd.run:
+    - name: echo $PW | kinit {{ salt['pillar.get']('sssd-ipa:principal') }} && ipa-client-install --uninstall -U
     - onlyif: ipa env
     - env:
         - PW: "{{salt['pillar.get']('sssd-ipa:password')}}"
