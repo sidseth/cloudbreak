@@ -130,10 +130,12 @@ public class ClusterUpscaleService {
         return repair && restartServices && stack.getNotTerminatedInstanceMetaDataList().size() == stack.getRunningInstanceMetaDataSet().size();
     }
 
-    public void executePostRecipesOnNewHosts(Long stackId) throws CloudbreakException {
+    public void executePostRecipesOnNewHosts(Long stackId, String hostGroupName) throws CloudbreakException {
         Stack stack = stackService.getByIdWithListsInTransaction(stackId);
-        LOGGER.debug("Start executing post recipes");
-        recipeEngine.executePostInstallRecipes(stack);
+        HostGroup hostGroup = Optional.ofNullable(hostGroupService.getByClusterIdAndNameWithRecipes(stack.getCluster().getId(), hostGroupName))
+                .orElseThrow(NotFoundException.notFound("hostgroup", hostGroupName));
+        LOGGER.debug("Start executing post recipes for upscaled hostGroup: {}", hostGroupName);
+        recipeEngine.executePostInstallRecipes(stack, hostGroup.getRecipes());
     }
 
     public Map<String, String> gatherInstalledComponents(Long stackId, String hostname) {

@@ -244,7 +244,9 @@ public class ClusterBuilderService {
 
     public void executePostInstallRecipes(Long stackId) throws CloudbreakException {
         recipeEngine.executePostInstallRecipes(
-                stackService.getByIdWithListsInTransaction(stackId));
+                stackService.getByIdWithListsInTransaction(stackId),
+                hostGroupService.getRecipesByCluster(
+                        stackService.getByIdWithListsInTransaction(stackId).getCluster().getId()));
     }
 
     private String getSdxStackCrn(Stack stack) {

@@ -36,12 +36,13 @@ public class UpscalePostRecipesHandler implements EventHandler<UpscalePostRecipe
     @Override
     public void accept(Event<UpscalePostRecipesRequest> event) {
 
-        LOGGER.debug("ZZZ: UpscalePostRecipesRequest");
+
         UpscalePostRecipesRequest request = event.getData();
+        LOGGER.debug("ZZZ: UpscalePostRecipesRequest: request={}", request);
         UpscalePostRecipesResult result;
         PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "UpscalePostRecipesRequest");
         try {
-            clusterUpscaleService.executePostRecipesOnNewHosts(request.getResourceId());
+            clusterUpscaleService.executePostRecipesOnNewHosts(request.getResourceId(), request.getHostGroupName());
             result = new UpscalePostRecipesResult(request);
         } catch (Exception e) {
             result = new UpscalePostRecipesResult(e.getMessage(), e, request);

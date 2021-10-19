@@ -1279,11 +1279,13 @@ public class SaltOrchestrator implements HostOrchestrator {
             runSyncAll(sc, allHostnames, allNodes, exitCriteriaModel);
             if (phase == PRE_CLOUDERA_MANAGER_START) {
                 // Execute highstate before recipe. Otherwise ipa domain names will not be resolvable in recipe scripts.
+                // ZZZ: This seems very wrong. highState is triggered elsewhere ... and calling it just to make sure is strange?
                 runNewService(sc, new HighStateAllRunner(allHostnames, allNodes), exitCriteriaModel, maxRetryRecipe, true);
             } else {
                 // Skip highstate and just execute other recipes for performace.
                 StateRunner stateAllRunner = new StateRunner(targetHostnames, allNodes, "recipes." + phase.value());
                 OrchestratorBootstrap saltJobIdTracker = new SaltJobIdTracker(sc, stateAllRunner);
+                // ZZZ: The sleepTime for polling recipes is 10s, which seems to be a little too long. At max though, this adds only 10s. Where is the remaining 20-30s going?
                 Callable<Boolean> saltJobRunBootstrapRunner = saltRunner.runner(saltJobIdTracker, exitCriteria, exitCriteriaModel, maxRetry, false);
                 saltJobRunBootstrapRunner.call();
             }
