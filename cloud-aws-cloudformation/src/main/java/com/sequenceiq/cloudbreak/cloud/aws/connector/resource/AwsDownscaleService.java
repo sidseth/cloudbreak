@@ -73,7 +73,8 @@ public class AwsDownscaleService {
             AuthenticatedContextView authenticatedContextView = new AuthenticatedContextView(auth);
             String regionName = authenticatedContextView.getRegion();
             LOGGER.debug("Calling deleteCloudWatchAlarmsForSystemFailures from AwsDownscaleService");
-            awsCloudWatchService.deleteCloudWatchAlarmsForSystemFailures(stack, regionName, credentialView, instanceIdsToDownscale);
+            LOGGER.info("ZZZ: Skipping cloudwatch alarms deletion during downscale");
+//            awsCloudWatchService.deleteCloudWatchAlarmsForSystemFailures(stack, regionName, credentialView, instanceIdsToDownscale);
 
             List<CloudResource> resourcesToDownscale = resources.stream()
                     .filter(resource -> instanceIdsToDownscale.contains(resource.getInstanceId()))

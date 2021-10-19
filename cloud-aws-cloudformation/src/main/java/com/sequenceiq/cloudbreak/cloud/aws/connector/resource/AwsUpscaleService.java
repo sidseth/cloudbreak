@@ -168,7 +168,8 @@ public class AwsUpscaleService {
             PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "AWSUpscaleService.tagRootVolumes");
 
             PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "AWSUpscaleService.addCloudWatchAlarmsForSystemFailures");
-            awsCloudWatchService.addCloudWatchAlarmsForSystemFailures(instances, regionName, credentialView);
+            LOGGER.info("ZZZ: Skipping cloudwatch alarms during UpscaleService");
+            //awsCloudWatchService.addCloudWatchAlarmsForSystemFailures(instances, regionName, credentialView);
             PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "AWSUpscaleService.addCloudWatchAlarmsForSystemFailures");
 
             PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "AWSUpscaleService.addLoadBalancerServices");

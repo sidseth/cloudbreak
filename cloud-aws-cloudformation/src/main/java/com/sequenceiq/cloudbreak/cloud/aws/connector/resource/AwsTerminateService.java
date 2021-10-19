@@ -80,7 +80,8 @@ public class AwsTerminateService {
         AmazonCloudFormationClient amazonCloudFormationClient = awsClient.createCloudFormationClient(credentialView, regionName);
 
         LOGGER.debug("Calling deleteCloudWatchAlarmsForSystemFailures from AwsTerminateService");
-        awsCloudWatchService.deleteAllCloudWatchAlarmsForSystemFailures(stack, regionName, credentialView);
+        LOGGER.info("ZZZ: Skipping cloudwatch alarms deletion during cluster termination");
+//        awsCloudWatchService.deleteAllCloudWatchAlarmsForSystemFailures(stack, regionName, credentialView);
         waitAndDeleteCloudformationStack(ac, stack, resources, amazonCloudFormationClient);
         awsComputeResourceService.deleteComputeResources(ac, stack, resources);
         deleteKeyPair(ac, stack, amazonEC2Client, credentialView, regionName);
