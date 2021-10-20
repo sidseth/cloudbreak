@@ -59,7 +59,7 @@ done
 # TODO: Redo some of this logic. 1. Zone discovery. 2. Multiple attempts, especially - send the first attempt to the default.
 date --iso-8601=ns
 echo "Setting reverse pointer"
-for zone in $(ipa dnszone-find -v --raw | grep "idnsname:.*\.in-addr\.arpa\." | cut -d':' -f2 | awk '{ print length, $0 }' | sort -n -r | awk '{ print $2 }' | xargs)
+for zone in $(ipa -v dnszone-find --raw | grep "idnsname:.*\.in-addr\.arpa\." | cut -d':' -f2 | awk '{ print length, $0 }' | sort -n -r | awk '{ print $2 }' | xargs)
 do
     date --iso-8601=ns
     ZONE_NET=${zone//.in-addr.arpa./}
@@ -67,11 +67,11 @@ do
         REVERSE_RECORD_NAME=$(echo "$REVERSE_IP" | sed "s/\.$ZONE_NET$//g")
         # dnsrecord-add must either add the record or modify it
         date --iso-8601=ns
-        if ! ipa dnsrecord-find -v -f "$zone" "--name=$REVERSE_RECORD_NAME" "--ptr-rec=${FQDN}." --ttl {{ pillar['sssd-ipa']['dns_ttl'] }}; then
-          ipa dnsrecord-add -v -f "$zone" "$REVERSE_RECORD_NAME" "--ptr-rec=${FQDN}." --ttl {{ pillar['sssd-ipa']['dns_ttl'] }}
+        if ! ipa -v -f dnsrecord-find "$zone" "--name=$REVERSE_RECORD_NAME" "--ptr-rec=${FQDN}." --ttl {{ pillar['sssd-ipa']['dns_ttl'] }}; then
+          ipa -v -f dnsrecord-add "$zone" "$REVERSE_RECORD_NAME" "--ptr-rec=${FQDN}." --ttl {{ pillar['sssd-ipa']['dns_ttl'] }}
         fi
         date --iso-8601=ns
-        if ipa dnsrecord-find -v -f "$zone" "--name=$REVERSE_RECORD_NAME" "--ptr-rec=${FQDN}." --ttl {{ pillar['sssd-ipa']['dns_ttl'] }}; then
+        if ipa -v -f dnsrecord-find "$zone" "--name=$REVERSE_RECORD_NAME" "--ptr-rec=${FQDN}." --ttl {{ pillar['sssd-ipa']['dns_ttl'] }}; then
           date --iso-8601=ns
           break
         else
