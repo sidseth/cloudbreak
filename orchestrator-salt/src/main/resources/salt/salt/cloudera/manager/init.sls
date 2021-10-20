@@ -11,6 +11,22 @@ install-cloudera-manager-server:
     - unless:
       - rpm -q cloudera-manager-daemons cloudera-manager-agent cloudera-manager-server
 
+/opt/cloudera/cm/bin/gen_credentials_ipa.sh:
+  file.managed:
+    - source: salt://cloudera/manager/scripts/gen_credentials_ipa.sh
+    - user: cloudera-scm
+    - group: cloudera-scm
+    - mode: 755
+    - replace: True
+
+/opt/cloudera/cm/bin/delete_credentials_ipa.sh:
+  file.managed:
+    - source: salt://cloudera/manager/scripts/delete_credentials_ipa.sh
+    - user: cloudera-scm
+    - group: cloudera-scm
+    - mode: 755
+    - replace: True
+
 /etc/cloudera-scm-server/cm.settings:
   file.managed:
     - user: cloudera-scm
