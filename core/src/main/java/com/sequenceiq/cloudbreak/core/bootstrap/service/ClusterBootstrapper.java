@@ -373,6 +373,7 @@ public class ClusterBootstrapper {
         for (InstanceMetaData im : metaDataSet) {
             Node node = createNodeAndInitFqdnInInstanceMetadata(stack, im, clusterDomain, hostGroupNodeIndexes, clusterNodeNames);
             if (upscaleCandidateAddresses.contains(im.getPrivateIp())) {
+                // ZZZ: This is unnecessary logging. Should instead be collated into a few log-lines with the domain part removed.
                 LOGGER.info("Node is an upscale candidate: {}", node.getInstanceId());
                 nodes.add(node);
             }
@@ -433,7 +434,7 @@ public class ClusterBootstrapper {
         hostOrchestrator.bootstrapNewNodes(allGatewayConfigs, nodes, allNodes, stateZip, params, clusterDeletionBasedModel(stack.getId(), null));
         PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "bootstrapNewNodesOnHost.bootstrapNewNodes");
 
-        PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "bootstrapNewNodesOnHost.gatewayConfigs2");
+            PerfLogger.get().opBegin(MDCUtils.getPerfContextString(), "bootstrapNewNodesOnHost.gatewayConfigs2");
         InstanceMetaData primaryGateway = stack.getPrimaryGatewayInstance();
         GatewayConfig gatewayConfig = gatewayConfigService.getGatewayConfig(stack, primaryGateway, enableKnox);
         PollingResult allNodesAvailabilityPolling = hostClusterAvailabilityPollingService

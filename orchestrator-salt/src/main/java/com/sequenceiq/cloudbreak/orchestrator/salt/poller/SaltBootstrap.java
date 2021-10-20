@@ -62,10 +62,26 @@ public class SaltBootstrap implements OrchestratorBootstrap {
 
     @Override
     public Boolean call() throws Exception {
+        // ZZZ: Somehow on the 2nd call ... this goes to 100/100 <-- which implies that targets is empty.
+        //   ZZZ: If targets is empty - this proceeds to go and check if the nodes are responding - skipping the createMinionAcceptor().acceptMinions() step.
+        // ZZZ: Tries to go and check if the minions are responding via an IP check. If not, all targets are added back again.
+        // ZZZ: Call 3 (already at the 30s mark) Bootstrapping 0/100
+        //   ZZZ: Run 3 executes the minion acceptor again.
+        //   ZZZ: This time around, it waits for all minions to come into a ready state of sorts.
+        //   ZZZ: This itself finishes at 10:16. (First attempt 09:41, 2nd acceptor at 10:01) -> So likely all joined in 30 seconds?
+        //   ZZZ: 10:31 Proceeds to run a network.ipaddress ... this itself takes 15 more seconds (So maybe a different step of the salt accept process?)
+        //   ZZZ: Despite the 15 seconds - overall, "not-responding" count = 94?
+        // ZZZ: Call 4 (At 10:41 - at the 50s mark now).
+        //   ZZZ: this shows Bootstrapping 6/100 <- despite all not-responding and added to targets.
+        //   ZZZ: Finally, everything looks good: Bootstrapping of nodes completed at 10:42 (60+ seconds after start).
+
+
         LOGGER.debug("Bootstrapping of nodes [{}/{}]", originalTargets.size() - targets.size(), originalTargets.size());
         if (!targets.isEmpty()) {
-            LOGGER.debug("Missing targets for SaltBootstrap: {}", targets);
+            // ZZZ TODO: This log line is a little excessive ... don't need to print all information about the missing nodes.
+            LOGGER.debug("Missing targets for SaltBootstrap: targetCount={}, targets={}", targets.size(), targets);
 
+            LOGGER.debug("ZZZ: bootstrapParams={}", params);
             SaltAction saltAction = createBootstrap(params.isRestartNeededFlagSupported(), params.isRestartNeeded());
             GenericResponses responses = sc.action(saltAction);
 
@@ -92,6 +108,7 @@ public class SaltBootstrap implements OrchestratorBootstrap {
             }
 
             createMinionAcceptor().acceptMinions();
+            // ZZZ This can throw a failed response. Essentially wait for all the salt minions to join?
         }
 
         MinionIpAddressesResponse minionIpAddressesResponse = SaltStates.collectMinionIpAddresses(sc);
@@ -100,12 +117,14 @@ public class SaltBootstrap implements OrchestratorBootstrap {
                 if (!minionIpAddressesResponse.getAllIpAddresses().contains(node.getPrivateIp())) {
                     LOGGER.info("Salt-minion is not responding on host: {}, yet", node);
                     targets.add(node);
+                    // TODO:ZZZ Add the end of this loop, log the total-count instead of all nodes.
                 }
             });
         } else {
             throw new CloudbreakOrchestratorFailedException("Minions ip address collection returned null value");
         }
         if (!targets.isEmpty()) {
+            // ZZZ: TODO: Log how many missing.
             throw new CloudbreakOrchestratorFailedException("There are missing nodes from salt network response: " + targets);
         }
         LOGGER.debug("Bootstrapping of nodes completed: {}", originalTargets.size());

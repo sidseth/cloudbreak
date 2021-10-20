@@ -56,6 +56,8 @@ public class BootstrapParams {
         return "BootstrapParams{" +
                 "cloud='" + cloud + '\'' +
                 ", os='" + os + '\'' +
+                ", restartNeededFlagSupported='" + restartNeededFlagSupported + '\'' +
+                ", restartNeeded='" + restartNeeded + '\'' +
                 ", saltBootstrapFpSupported=" + saltBootstrapFpSupported +
                 '}';
     }

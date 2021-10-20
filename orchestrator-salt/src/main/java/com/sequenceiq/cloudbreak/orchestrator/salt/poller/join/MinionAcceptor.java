@@ -103,7 +103,7 @@ public class MinionAcceptor {
     }
 
     private void proceedWithAcceptingMinions(SaltConnector sc, List<String> unacceptedMinions) throws CloudbreakOrchestratorFailedException {
-        LOGGER.info("There are unaccepted minions on master: {}", unacceptedMinions);
+        LOGGER.info("There are unaccepted minions on master. count={}: {}", unacceptedMinions.size(), unacceptedMinions);
         Map<String, String> fingerprintsFromMaster = fetchFingerprintsFromMaster(sc, unacceptedMinions);
         List<Minion> minionsToAccept = minions.stream().filter(minion -> unacceptedMinions.contains(minion.getId())).collect(Collectors.toList());
         LOGGER.info("Processing the following minions so they are accepted on the master: {}",
@@ -133,7 +133,8 @@ public class MinionAcceptor {
 
     private MinionKeysOnMasterResponse fetchMinionsFromMaster(SaltConnector sc, List<Minion> minions) throws CloudbreakOrchestratorFailedException {
         Set<String> minionId = minions.stream().map(Minion::getId).collect(Collectors.toSet());
-        LOGGER.debug("Minions should join: {}", minionId);
+        LOGGER.debug("Minions should join: count={}, minions={}", minionId.size(), minionId);
+        LOGGER.debug("ZZZ: Minions should join: count={}, minions={}", minionId.size(), minionId);
         MinionKeysOnMasterResponse response = sc.wheel("key.list_all", null, MinionKeysOnMasterResponse.class);
         LOGGER.debug("Minion keys on master response: {}", response);
         if (!response.getAllMinions().containsAll(minionId)) {
