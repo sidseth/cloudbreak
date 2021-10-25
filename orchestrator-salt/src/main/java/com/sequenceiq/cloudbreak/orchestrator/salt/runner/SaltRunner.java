@@ -29,6 +29,11 @@ public class SaltRunner {
                 usingErrorCount ? maxRetryOnError : maxRetry);
     }
 
+    public Callable<Boolean> runnerSaltBootTemp(OrchestratorBootstrap bootstrap, ExitCriteria exitCriteria, ExitCriteriaModel exitCriteriaModel) {
+        return new OrchestratorBootstrapRunner(bootstrap, exitCriteria, exitCriteriaModel, MDC.getCopyOfContextMap(), maxRetry*2, 5000,
+                maxRetry * 2);
+    }
+
     public Callable<Boolean> runner(OrchestratorBootstrap bootstrap, ExitCriteria exitCriteria, ExitCriteriaModel exitCriteriaModel) {
         return runner(bootstrap, exitCriteria, exitCriteriaModel, maxRetry, false);
     }

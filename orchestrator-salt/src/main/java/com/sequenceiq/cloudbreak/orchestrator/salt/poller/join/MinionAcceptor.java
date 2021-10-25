@@ -40,10 +40,22 @@ public class MinionAcceptor {
         this.fingerprintCollector = fingerprintCollector;
     }
 
-    public void acceptMinions() throws CloudbreakOrchestratorFailedException {
+    public boolean acceptMinions() throws CloudbreakOrchestratorFailedException {
         for (SaltConnector sc : saltConnectors) {
             LOGGER.info("Running for master: [{}]", sc.getHostname());
-            MinionKeysOnMasterResponse minionKeysOnMaster = fetchMinionsFromMaster(sc, minions);
+            Set<String> minionIds = minions.stream().map(Minion::getId).collect(Collectors.toSet());
+            MinionKeysOnMasterResponse minionKeysOnMaster = fetchMinionsFromMaster(sc, minionIds);
+            LOGGER.info("ZZZ: GetAllMinions: count={}, {}", minionKeysOnMaster.getAllMinions().size(), minionKeysOnMaster.getAllMinions());
+            if (!minionKeysOnMaster.getAllMinions().containsAll(minionIds)) {
+                LOGGER.info("ZZZ: returning false. MinionIds: count={}, {}", minionIds.size(), minionIds);
+                // The exception here essentially means that until ALL the new minions have at least tried connecting to the master, the entire
+                // flow will be retried.
+                // ZZZ TODO : This should not be throwing an exception... instead it should send back a list of missing nodes, so that it can be retried the next time around.
+//                throw new CloudbreakOrchestratorFailedException("There are missing minions from salt response");
+                // TODO ZZZ For now returning false ... will add the original set back to targets. This is a hack. May need som re-factoring / better understanding
+                // to get this working better.
+                return false;
+            }
             List<String> unacceptedMinions = minionKeysOnMaster.getUnacceptedMinions();
             List<String> deniedMinions = minionKeysOnMaster.getDeniedMinions();
             List<String> removedUnacceptedMinions = cleanupMinionIds(sc, deniedMinions, unacceptedMinions);
@@ -54,6 +66,7 @@ public class MinionAcceptor {
                 LOGGER.info("No unaccepted minions found on master: [{}]", sc.getHostname());
             }
         }
+        return true;
     }
 
     private List<String> cleanupMinionIds(SaltConnector sc, List<String> deniedMinions, List<String> unacceptedMinions)
@@ -106,7 +119,8 @@ public class MinionAcceptor {
         LOGGER.info("There are unaccepted minions on master. count={}: {}", unacceptedMinions.size(), unacceptedMinions);
         Map<String, String> fingerprintsFromMaster = fetchFingerprintsFromMaster(sc, unacceptedMinions);
         List<Minion> minionsToAccept = minions.stream().filter(minion -> unacceptedMinions.contains(minion.getId())).collect(Collectors.toList());
-        LOGGER.info("Processing the following minions so they are accepted on the master: {}",
+        LOGGER.info("Processing the following minions so they are accepted on the master. count={},: {}",
+                minionsToAccept.size(),
                 minionsToAccept.stream().map(Minion::getId).collect(Collectors.toList()));
         if (!minionsToAccept.isEmpty()) {
             FingerprintsResponse fingerprintsResponse = fingerprintCollector.collectFingerprintFromMinions(sc, minionsToAccept);
@@ -118,7 +132,7 @@ public class MinionAcceptor {
             List<Minion> minions) {
         Map<String, String> fingerprintByMinion = mapFingerprintByMinion(fingerprintsResponse, minions);
         List<String> minionsToAccept = fingerprintMatcher.collectMinionsWithMatchingFp(fingerprintsFromMaster, fingerprintByMinion);
-        LOGGER.info("Following minions will be accepted: {}", minionsToAccept);
+        LOGGER.info("Following minions will be accepted: count={}, {}", minionsToAccept.size(), minionsToAccept);
         if (!minionsToAccept.isEmpty()) {
             sc.wheel("key.accept", minionsToAccept, Object.class);
         }
@@ -131,15 +145,12 @@ public class MinionAcceptor {
                 .collect(Collectors.toMap(fp -> minionIdByAddress.get(fp.getAddress()), Fingerprint::getFingerprint));
     }
 
-    private MinionKeysOnMasterResponse fetchMinionsFromMaster(SaltConnector sc, List<Minion> minions) throws CloudbreakOrchestratorFailedException {
-        Set<String> minionId = minions.stream().map(Minion::getId).collect(Collectors.toSet());
-        LOGGER.debug("Minions should join: count={}, minions={}", minionId.size(), minionId);
-        LOGGER.debug("ZZZ: Minions should join: count={}, minions={}", minionId.size(), minionId);
+    private MinionKeysOnMasterResponse fetchMinionsFromMaster(SaltConnector sc, Set<String> minionIds) throws CloudbreakOrchestratorFailedException {
+
+        LOGGER.debug("Minions should join: count={}, minions={}", minionIds.size(), minionIds);
+        LOGGER.debug("ZZZ: Minions should join: count={}, minions={}", minionIds.size(), minionIds);
         MinionKeysOnMasterResponse response = sc.wheel("key.list_all", null, MinionKeysOnMasterResponse.class);
         LOGGER.debug("Minion keys on master response: {}", response);
-        if (!response.getAllMinions().containsAll(minionId)) {
-            throw new CloudbreakOrchestratorFailedException("There are missing minions from salt response");
-        }
         return response;
     }
 

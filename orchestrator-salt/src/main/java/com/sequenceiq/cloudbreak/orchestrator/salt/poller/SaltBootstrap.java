@@ -97,6 +97,16 @@ public class SaltBootstrap implements OrchestratorBootstrap {
             }
 
             targets = failedTargets;
+            // TODO ZZZ: This, in conjunction with the !targets.empty check in the outer loop, essentially
+            //  means that this loop can end up flip-flopping between accept / network.ip_address calls on each attempt
+            //  and ends up causing an unnecessary loop.
+            //  This specifically happens when createMinionAcceptor().acceptMinions() specifically throws an exception,
+            //  so collectMinionIpAddresses does not run, and targets ends up being empty as long as the saltboot.* call above responded correctly.
+
+            //  The network.ipaddr lookup is useless until all the minions have been accepted (TODO is this true?), so tracking
+            //  accepted minions separately may be worth it.
+            //
+
 
             if (!targets.isEmpty()) {
                 LOGGER.info("Missing nodes to run saltbootstrap: {}", targets);
@@ -107,24 +117,30 @@ public class SaltBootstrap implements OrchestratorBootstrap {
                 params.setRestartNeeded(false);
             }
 
-            createMinionAcceptor().acceptMinions();
+            if (!createMinionAcceptor().acceptMinions()) {
+                // ZZZ: Temporary - to avoid the issue mentioned above. This isn't good enough to re-populate
+                //  targets because multiple parts of the system can throw an exception. A better mechanism may be to
+                //  catch and re-throw. Even better would be to somehow retain the minion list.
+                targets = originalTargets;
+            }
             // ZZZ This can throw a failed response. Essentially wait for all the salt minions to join?
         }
 
+        // TODO ZZZ: In
         MinionIpAddressesResponse minionIpAddressesResponse = SaltStates.collectMinionIpAddresses(sc);
         if (minionIpAddressesResponse != null) {
             originalTargets.forEach(node -> {
                 if (!minionIpAddressesResponse.getAllIpAddresses().contains(node.getPrivateIp())) {
                     LOGGER.info("Salt-minion is not responding on host: {}, yet", node);
                     targets.add(node);
-                    // TODO:ZZZ Add the end of this loop, log the total-count instead of all nodes.
                 }
             });
+            LOGGER.info("ZZZ: Salt-minion not responding hostCount(including previous targets)={}", targets.size());
         } else {
             throw new CloudbreakOrchestratorFailedException("Minions ip address collection returned null value");
         }
         if (!targets.isEmpty()) {
-            // ZZZ: TODO: Log how many missing.
+            LOGGER.info("ZZZ: Pending targets: {}", targets.size());
             throw new CloudbreakOrchestratorFailedException("There are missing nodes from salt network response: " + targets);
         }
         LOGGER.debug("Bootstrapping of nodes completed: {}", originalTargets.size());

@@ -345,7 +345,7 @@ public class SaltOrchestrator implements HostOrchestrator {
             Set<Node> nodes = gatewayTargets.isEmpty() ? targets : allNodes;
             LOGGER.debug("ZZZ: #Nodes for rebootstrap: {}, gatewayTargets={}", nodes.size(), gatewayTargets);
             OrchestratorBootstrap saltBootstrap = new SaltBootstrap(sc, saltConnectors, allGatewayConfigs, nodes, params);
-            Callable<Boolean> saltBootstrapRunner = saltRunner.runner(saltBootstrap, exitCriteria, exitModel);
+            Callable<Boolean> saltBootstrapRunner = saltRunner.runnerSaltBootTemp(saltBootstrap, exitCriteria, exitModel);
             saltBootstrapRunner.call();
             PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "bootstrapNewNodesOnHost.bootstrapNewNodes.rebootstrap");
         } catch (Exception e) {
