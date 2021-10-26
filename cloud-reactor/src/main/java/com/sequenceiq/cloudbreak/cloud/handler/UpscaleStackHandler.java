@@ -31,6 +31,8 @@ import reactor.bus.EventBus;
 
 @Component
 public class UpscaleStackHandler implements CloudPlatformEventHandler<UpscaleStackRequest> {
+    // ZZZ: Refer to this to write handlers whcih do not have the deprecation warning, or
+    // https://github.com/hortonworks/cloudbreak/pull/11105/files#diff-e79da6d98e7831354322f04aa847e7111ec6f7eae3dd0f39c1ca585b42a5288eR399
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UpscaleStackHandler.class);
 
