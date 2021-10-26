@@ -77,27 +77,6 @@ public class ClusterUpscaleVAltActions {
         };
     }
 
-
-
-    @Bean(name = "UPSCALE_V_ALT_FAILED_STATE")
-    public Action<?, ?> clusterUpscaleFailedAction() {
-        return new AbstractStackFailureAction<ClusterUpscaleVAltState, ClusterUpscaleVAltEvents>() {
-
-            @Override
-            protected void doExecute(StackFailureContext context, StackFailureEvent payload, Map<Object, Object> variables) {
-                clusterUpscaleFlowService.clusterUpscaleFailed(context.getStackView().getId(), payload.getException());
-                getMetricService().incrementMetricCounter(MetricType.CLUSTER_UPSCALE_FAILED, context.getStackView(), payload.getException());
-                ClusterUpscaleFailedConclusionRequest request = new ClusterUpscaleFailedConclusionRequest(context.getStackView().getId());
-                sendEvent(context, request.selector(), request);
-            }
-        };
-    }
-
-
-
-
-
-
     @Bean(name = "CLUSTER_MANAGER_COMMISSION_STATE")
     public Action<?, ?> cmCommissionAction() {
         return new AbstractClusterUpscaleVAltActions<>(UpscaleVAltStartInstancesResult.class) {
@@ -117,7 +96,7 @@ public class ClusterUpscaleVAltActions {
 
 
 
-    @Bean(name = "FINALIZE_UPSCALE_STATE")
+    @Bean(name = "FINALIZE_UPSCALE_VALT_STATE")
     public Action<?, ?> upscaleFinishedAction() {
         return new AbstractClusterUpscaleVAltActions<>(UpscaleClusterVAltCommissionViaCMResult.class) {
 
@@ -131,6 +110,21 @@ public class ClusterUpscaleVAltActions {
             @Override
             protected Selectable createRequest(ClusterUpscaleVAltContext context) {
                 return null;
+            }
+        };
+    }
+
+
+    @Bean(name = "UPSCALE_V_ALT_FAILED_STATE")
+    public Action<?, ?> clusterUpscaleFailedAction() {
+        return new AbstractStackFailureAction<ClusterUpscaleVAltState, ClusterUpscaleVAltEvents>() {
+
+            @Override
+            protected void doExecute(StackFailureContext context, StackFailureEvent payload, Map<Object, Object> variables) {
+                clusterUpscaleFlowService.clusterUpscaleFailed(context.getStackView().getId(), payload.getException());
+                getMetricService().incrementMetricCounter(MetricType.CLUSTER_UPSCALE_FAILED, context.getStackView(), payload.getException());
+                ClusterUpscaleFailedConclusionRequest request = new ClusterUpscaleFailedConclusionRequest(context.getStackView().getId());
+                sendEvent(context, request.selector(), request);
             }
         };
     }
