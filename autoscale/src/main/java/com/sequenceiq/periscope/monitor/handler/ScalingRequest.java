@@ -135,8 +135,10 @@ public class ScalingRequest implements Runnable {
 
             LOGGER.info("Sending request to add '{}' instance(s) into host group '{}', triggered adjustmentType '{}', cluster '{}', user '{}'",
                     scalingAdjustment, hostGroup, policy.getAdjustmentType(), stackCrn, userCrn);
+            LOGGER.info("ZZZ: with alternate mechanism");
             UpdateStackV4Request updateStackJson = new UpdateStackV4Request();
             updateStackJson.setWithClusterEvent(true);
+            updateStackJson.setUseAlternateMechanism(true);
             InstanceGroupAdjustmentV4Request instanceGroupAdjustmentJson = new InstanceGroupAdjustmentV4Request();
             instanceGroupAdjustmentJson.setScalingAdjustment(scalingAdjustment);
             instanceGroupAdjustmentJson.setInstanceGroup(hostGroup);

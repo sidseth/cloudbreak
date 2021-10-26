@@ -12,6 +12,7 @@ import com.sequenceiq.cloudbreak.reactor.api.event.resource.BootstrapNewNodesRes
 import com.sequenceiq.cloudbreak.reactor.api.event.resource.ExtendHostMetadataResult;
 
 public enum StackUpscaleEvent implements FlowEvent {
+    // ZZZ: This is the first event in the queue ... which apparently triggers the entire chain here.
     ADD_INSTANCES_EVENT("STACK_UPSCALE_TRIGGER_EVENT"),
     UPSCALE_VALID_EVENT(CloudPlatformResult.selector(UpscaleStackValidationResult.class)),
     UPSCALE_INVALID_EVENT(CloudPlatformResult.failureSelector(UpscaleStackValidationResult.class)),

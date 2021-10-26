@@ -10,6 +10,7 @@ import com.sequenceiq.cloudbreak.common.type.ScalingType;
 import reactor.rx.Promise;
 
 public class StackAndClusterUpscaleTriggerEvent extends StackScaleTriggerEvent {
+    // ZZZ: This class is also important to get the flow started...
 
     private final ScalingType scalingType;
 

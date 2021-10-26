@@ -9,7 +9,10 @@ public class FlowChainTriggers {
 
     public static final String CLUSTER_UPGRADE_CHAIN_TRIGGER_EVENT = "CLUSTER_UPGRADE_CHAIN_TRIGGER_EVENT";
 
+    // ZZZ: This is the selector / upscale trigger
     public static final String FULL_UPSCALE_TRIGGER_EVENT = "FULL_UPSCALE_TRIGGER_EVENT";
+
+    public static final String FULL_UPSCALE_TRIGGER_V_ALT_EVENT = "FULL_UPSCALE_TRIGGER_V_ALT_EVENT";
 
     public static final String FULL_DOWNSCALE_TRIGGER_EVENT = "FULL_DOWNSCALE_TRIGGER_EVENT";
 

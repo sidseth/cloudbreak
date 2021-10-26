@@ -213,7 +213,8 @@ public class StackOperationService {
         }
     }
 
-    public FlowIdentifier updateNodeCount(Stack stack, InstanceGroupAdjustmentV4Request instanceGroupAdjustmentJson, boolean withClusterEvent) {
+    public FlowIdentifier updateNodeCountVAlt(Stack stack, InstanceGroupAdjustmentV4Request instanceGroupAdjustmentJson, boolean withClusterEvent) {
+        LOGGER.info("ZZZ: UpdateNodeCountVAlt");
         environmentService.checkEnvironmentStatus(stack, EnvironmentStatus.upscalable());
         try {
             return transactionService.required(() -> {
@@ -233,8 +234,54 @@ public class StackOperationService {
                     updateNodeCountValidator.validataHostMetadataStatuses(stackWithLists, instanceGroupAdjustmentJson);
                 }
                 if (instanceGroupAdjustmentJson.getScalingAdjustment() > 0) {
+                    // ZZZ: This updates the stack in the DB.
+                    stackUpdater.updateStackStatus(stackWithLists.getId(), DetailedStackStatus.UPSCALE_REQUESTED,
+                            "Requested node count for upscaling (valt): " + instanceGroupAdjustmentJson.getScalingAdjustment());
+                    // ZZZ: Trigger the actual flow
+                    return flowManager.triggerStackUpscaleVAlt(
+                            stackWithLists.getId(),
+                            instanceGroupAdjustmentJson,
+                            withClusterEvent);
+                } else {
+                    stackUpdater.updateStackStatus(stackWithLists.getId(), DetailedStackStatus.DOWNSCALE_REQUESTED,
+                            "Requested node count for downscaling: " + abs(instanceGroupAdjustmentJson.getScalingAdjustment()));
+                    return flowManager.triggerStackDownscale(stackWithLists.getId(), instanceGroupAdjustmentJson);
+                }
+            });
+        } catch (TransactionExecutionException e) {
+            if (e.getCause() instanceof BadRequestException) {
+                throw e.getCause();
+            }
+            throw new TransactionRuntimeExecutionException(e);
+        }
+    }
+
+    public FlowIdentifier updateNodeCount(Stack stack, InstanceGroupAdjustmentV4Request instanceGroupAdjustmentJson, boolean withClusterEvent) {
+        // ZZZ: This is where upscaling starts.
+        LOGGER.info("ZZZ: UpdateNodeCount");
+        environmentService.checkEnvironmentStatus(stack, EnvironmentStatus.upscalable());
+        try {
+            return transactionService.required(() -> {
+                Stack stackWithLists = stackService.getByIdWithLists(stack.getId());
+                updateNodeCountValidator.validateServiceRoles(stackWithLists, instanceGroupAdjustmentJson);
+                updateNodeCountValidator.validateStackStatus(stackWithLists);
+                updateNodeCountValidator.validateInstanceGroup(stackWithLists, instanceGroupAdjustmentJson.getInstanceGroup());
+                updateNodeCountValidator.validateScalabilityOfInstanceGroup(stackWithLists, instanceGroupAdjustmentJson);
+                updateNodeCountValidator.validateScalingAdjustment(instanceGroupAdjustmentJson, stackWithLists);
+                updateNodeCountValidator.validateInstanceStatuses(stackWithLists, instanceGroupAdjustmentJson);
+                if (withClusterEvent) {
+                    updateNodeCountValidator.validateClusterStatus(stackWithLists);
+                    updateNodeCountValidator.validateHostGroupAdjustment(
+                            instanceGroupAdjustmentJson,
+                            stackWithLists,
+                            instanceGroupAdjustmentJson.getScalingAdjustment());
+                    updateNodeCountValidator.validataHostMetadataStatuses(stackWithLists, instanceGroupAdjustmentJson);
+                }
+                if (instanceGroupAdjustmentJson.getScalingAdjustment() > 0) {
+                    // ZZZ: This updates the stack in the DB.
                     stackUpdater.updateStackStatus(stackWithLists.getId(), DetailedStackStatus.UPSCALE_REQUESTED,
                             "Requested node count for upscaling: " + instanceGroupAdjustmentJson.getScalingAdjustment());
+                    // ZZZ: Trigger the actual flow
                     return flowManager.triggerStackUpscale(
                             stackWithLists.getId(),
                             instanceGroupAdjustmentJson,

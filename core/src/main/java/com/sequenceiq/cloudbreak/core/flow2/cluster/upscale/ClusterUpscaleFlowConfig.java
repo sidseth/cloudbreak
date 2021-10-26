@@ -67,6 +67,8 @@ import com.sequenceiq.flow.core.config.AbstractFlowConfiguration;
 import com.sequenceiq.flow.core.config.AbstractFlowConfiguration.Transition.Builder;
 import com.sequenceiq.flow.core.config.RetryableFlowConfiguration;
 
+// ZZZ This defines the old state machine?
+
 @Component
 public class ClusterUpscaleFlowConfig extends AbstractFlowConfiguration<ClusterUpscaleState, ClusterUpscaleEvent>
         implements RetryableFlowConfiguration<ClusterUpscaleEvent> {

@@ -22,6 +22,9 @@ import com.sequenceiq.flow.core.FlowEvent;
 import com.sequenceiq.flow.event.EventSelectorUtil;
 
 public enum ClusterUpscaleEvent implements FlowEvent {
+    // ZZZ: This is the 2nd event added in the flow. Cluster Upscale trigger event. And will presumably run once the previous
+    //  flow StackUpscaleTriggerEvent completes. i.e. the over-arching UpscaleFlowEventChain will take care of triggering this,
+    //  once the previous element in the chain is complete.
     CLUSTER_UPSCALE_TRIGGER_EVENT("CLUSTER_UPSCALE_TRIGGER_EVENT"),
     UPSCALE_CLUSTER_MANAGER_FINISHED_EVENT(EventSelectorUtil.selector(UpscaleClusterManagerResult.class)),
     UPSCALE_CLUSTER_MANAGER_FAILED_EVENT(EventSelectorUtil.failureSelector(UpscaleClusterManagerResult.class)),

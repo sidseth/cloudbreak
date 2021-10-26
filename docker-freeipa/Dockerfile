@@ -10,7 +10,7 @@ ENV VERSION ${VERSION}
 WORKDIR /
 
 # install the freeipa app
-ADD ${REPO_URL}/com/sequenceiq/freeipa/$VERSION/freeipa-$VERSION.jar /freeipa.jar
+ADD freeipa.jar /freeipa.jar
 
 # add jmx exporter
 ADD jmx_prometheus_javaagent-0.10.jar /jmx_prometheus_javaagent.jar

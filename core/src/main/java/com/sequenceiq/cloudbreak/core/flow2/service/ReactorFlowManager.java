@@ -106,7 +106,17 @@ public class ReactorFlowManager {
         return reactorNotifier.notify(stackId, selector, new StackEvent(selector, stackId));
     }
 
+    public FlowIdentifier triggerStackUpscaleVAlt(Long stackId, InstanceGroupAdjustmentV4Request instanceGroupAdjustment, boolean withClusterEvent) {
+        LOGGER.info("ZZZ: FlowManager trigger for upscale v-alt");
+        String selector = FlowChainTriggers.FULL_UPSCALE_TRIGGER_V_ALT_EVENT;
+        Acceptable stackAndClusterUpscaleTriggerEvent = new StackAndClusterUpscaleTriggerEvent(selector,
+                stackId, instanceGroupAdjustment.getInstanceGroup(), instanceGroupAdjustment.getScalingAdjustment(),
+                withClusterEvent ? ScalingType.UPSCALE_TOGETHER : ScalingType.UPSCALE_ONLY_STACK);
+        return reactorNotifier.notify(stackId, selector, stackAndClusterUpscaleTriggerEvent);
+    }
+
     public FlowIdentifier triggerStackUpscale(Long stackId, InstanceGroupAdjustmentV4Request instanceGroupAdjustment, boolean withClusterEvent) {
+        LOGGER.info("ZZZ: FlowManager trigger for upscale");
         String selector = FlowChainTriggers.FULL_UPSCALE_TRIGGER_EVENT;
         Acceptable stackAndClusterUpscaleTriggerEvent = new StackAndClusterUpscaleTriggerEvent(selector,
                 stackId, instanceGroupAdjustment.getInstanceGroup(), instanceGroupAdjustment.getScalingAdjustment(),
@@ -188,6 +198,8 @@ public class ReactorFlowManager {
         ClusterCredentialChangeTriggerEvent event = new ClusterCredentialChangeTriggerEvent(selector, stackId, null, password, Type.UPDATE);
         return reactorNotifier.notify(stackId, selector, event);
     }
+
+    // TODO ZZZ: See if an event is required here ... ... ...
 
     public FlowIdentifier triggerClusterUpscale(Long stackId, HostGroupAdjustmentV4Request hostGroupAdjustment) {
         String selector = CLUSTER_UPSCALE_TRIGGER_EVENT.event();

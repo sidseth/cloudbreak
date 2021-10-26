@@ -68,6 +68,8 @@ public class ScalingHandler implements ApplicationListener<ScalingEvent> {
 
             executorService.submit(scalingRequest);
             rejectedThreadService.remove(cluster.getId());
+            // TODO ZZZ This needs to change. At least for the scaledown check ... last scaling activity needs to be when scaling completed,
+            //  rather than when scaling started.
             clusterService.setLastScalingActivity(cluster.getId(), System.currentTimeMillis());
         } else {
             LOGGER.info("Autoscaling activity not required for config '{}', cluster '{}'.", alert.getName(), cluster.getStackCrn());

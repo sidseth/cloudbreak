@@ -341,11 +341,22 @@ public class StackCommonService {
         MDCBuilder.buildMdcContext(stack);
         User user = userService.getOrCreate(restRequestThreadLocalService.getCloudbreakUser());
         if (updateRequest.getStatus() != null) {
+            LOGGER.info("ZZZ: Using stackOperationService.updateStatus");
             return stackOperationService.updateStatus(stack.getId(), updateRequest.getStatus(), updateRequest.getWithClusterEvent(), user);
         } else {
-            Integer scalingAdjustment = updateRequest.getInstanceGroupAdjustment().getScalingAdjustment();
-            validateHardLimits(scalingAdjustment);
-            return stackOperationService.updateNodeCount(stack, updateRequest.getInstanceGroupAdjustment(), updateRequest.getWithClusterEvent());
+            LOGGER.info("ZZZ: Using scalingAdjustMent stackOperationService.updateNodeCount");
+
+            if (updateRequest.getUseAlternateMechanism()) {
+                LOGGER.info("ZZZ: Using vAltUpdateNodeCount");
+                Integer scalingAdjustment = updateRequest.getInstanceGroupAdjustment().getScalingAdjustment();
+                validateHardLimits(scalingAdjustment);
+                return stackOperationService.updateNodeCountVAlt(stack, updateRequest.getInstanceGroupAdjustment(), updateRequest.getWithClusterEvent());
+            } else {
+                LOGGER.info("ZZZ: Using defaultUpdateNodeCount");
+                Integer scalingAdjustment = updateRequest.getInstanceGroupAdjustment().getScalingAdjustment();
+                validateHardLimits(scalingAdjustment);
+                return stackOperationService.updateNodeCount(stack, updateRequest.getInstanceGroupAdjustment(), updateRequest.getWithClusterEvent());
+            }
         }
     }
 

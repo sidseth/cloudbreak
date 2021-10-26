@@ -91,6 +91,7 @@ public class AutoscaleV4Controller implements AutoscaleV4Endpoint {
     @Override
     @CheckPermissionByResourceCrn(action = AuthorizationResourceAction.SCALE_DATAHUB)
     public void putStack(@TenantAwareParam @ResourceCrn String crn, String userId, @Valid UpdateStackV4Request updateRequest) {
+        LOGGER.info("ZZZ: Received upscale request: {}", updateRequest);
         stackCommonService.putInDefaultWorkspace(crn, updateRequest);
     }
 

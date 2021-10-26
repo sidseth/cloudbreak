@@ -24,6 +24,9 @@ public class UpdateStackV4Request implements JsonEntity {
     @ApiModelProperty(StackModelDescription.INSTANCE_GROUP_ADJUSTMENT)
     private InstanceGroupAdjustmentV4Request instanceGroupAdjustment;
 
+    @ApiModelProperty("TODO New propery")
+    private Boolean useAlternateMechanism = Boolean.FALSE;
+
     public StatusRequest getStatus() {
         return status;
     }
@@ -44,6 +47,14 @@ public class UpdateStackV4Request implements JsonEntity {
         this.withClusterEvent = withClusterEvent;
     }
 
+    public Boolean getUseAlternateMechanism() {
+        return useAlternateMechanism;
+    }
+
+    public void setUseAlternateMechanism(Boolean useAlternateMechanism) {
+        this.useAlternateMechanism = useAlternateMechanism;
+    }
+
     public Boolean getWithClusterEvent() {
         return withClusterEvent;
     }
@@ -54,6 +65,7 @@ public class UpdateStackV4Request implements JsonEntity {
                 "status=" + status +
                 ", withClusterEvent=" + withClusterEvent +
                 ", instanceGroupAdjustment=" + instanceGroupAdjustment +
+                ", useAlternateMechanism=" + useAlternateMechanism +
                 '}';
     }
 }

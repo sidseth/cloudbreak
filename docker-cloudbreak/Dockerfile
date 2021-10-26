@@ -3,14 +3,14 @@ MAINTAINER info@hortonworks.com
 
 # REPO URL to download jar
 ARG REPO_URL=https://repo.hortonworks.com/content/repositories/releases
-ARG VERSION=''
+ARG VERSION=''2.49.0-b57-3
 
 ENV VERSION ${VERSION}
 
 WORKDIR /
 
 # install the cloudbreak app
-ADD ${REPO_URL}/com/sequenceiq/cloudbreak/$VERSION/cloudbreak-$VERSION.jar /cloudbreak.jar
+ADD cloudbreak.jar /cloudbreak.jar
 
 # add jmx exporter
 ADD jmx_prometheus_javaagent-0.10.jar /jmx_prometheus_javaagent.jar

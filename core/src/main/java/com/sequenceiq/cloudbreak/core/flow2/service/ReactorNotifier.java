@@ -89,6 +89,7 @@ public class ReactorNotifier {
         Stack stack = getStackFn.apply(event.getData().getResourceId());
         Optional.ofNullable(stack).map(Stack::getCluster).map(Cluster::getStatus).ifPresent(isTriggerAllowedInMaintenance(selector));
         reactorReporter.logInfoReport();
+        // ZZZ: TODO TODO : When exactly does this event get picked up
         reactor.notify(selector, event);
         return checkFlowStatus(event, stack.getName());
     }
