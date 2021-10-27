@@ -4,9 +4,10 @@ import static com.sequenceiq.cloudbreak.api.endpoint.v4.common.Status.AVAILABLE;
 import static com.sequenceiq.cloudbreak.api.endpoint.v4.common.Status.UPDATE_FAILED;
 import static com.sequenceiq.cloudbreak.api.endpoint.v4.common.Status.UPDATE_IN_PROGRESS;
 import static com.sequenceiq.cloudbreak.event.ResourceEvent.CLUSTER_RE_REGISTER_WITH_CLUSTER_PROXY;
-import static com.sequenceiq.cloudbreak.event.ResourceEvent.CLUSTER_SCALED_UP;
+import static com.sequenceiq.cloudbreak.event.ResourceEvent.CLUSTER_SCALED_UP_VALT;
 import static com.sequenceiq.cloudbreak.event.ResourceEvent.CLUSTER_SCALING_FAILED;
 import static com.sequenceiq.cloudbreak.event.ResourceEvent.CLUSTER_SCALING_UP;
+import static com.sequenceiq.cloudbreak.event.ResourceEvent.CLUSTER_SCALING_UP_VALT;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -55,7 +56,7 @@ class ClusterUpscaleVAltFlowService {
     void upscalingClusterManager(long stackId, String hostGroupName) {
         clusterService.updateClusterStatusByStackId(stackId, UPDATE_IN_PROGRESS,
                 String.format("Scaling up (v-alt) host  group: %s", hostGroupName));
-        flowMessageService.fireEventAndLog(stackId, UPDATE_IN_PROGRESS.name(), CLUSTER_SCALING_UP, hostGroupName);
+        flowMessageService.fireEventAndLog(stackId, UPDATE_IN_PROGRESS.name(), CLUSTER_SCALING_UP_VALT, hostGroupName);
     }
 
     void upscaleCommissionNewNodes(long stackId, String hostGroupName) {
@@ -81,7 +82,8 @@ class ClusterUpscaleVAltFlowService {
         if (success) {
             LOGGER.debug("Cluster upscaled v-alt successfully");
             clusterService.updateClusterStatusByStackId(stackView.getId(), AVAILABLE);
-            flowMessageService.fireEventAndLog(stackView.getId(), AVAILABLE.name(), CLUSTER_SCALED_UP, hostgroupName);
+            stackUpdater.updateStackStatus(stackView.getId(), DetailedStackStatus.PROVISIONED, String.format("will this update the final state to available?"));
+            flowMessageService.fireEventAndLog(stackView.getId(), AVAILABLE.name(), CLUSTER_SCALED_UP_VALT, hostgroupName);
         } else {
             LOGGER.debug("Cluster upscale failed v-alt. {} hosts failed to upscale", numOfFailedHosts);
             clusterService.updateClusterStatusByStackId(stackView.getId(), UPDATE_FAILED);

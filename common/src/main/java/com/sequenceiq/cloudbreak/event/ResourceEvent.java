@@ -242,9 +242,12 @@ public enum ResourceEvent {
     CLUSTER_CHANGE_CREDENTIAL_FAILED("cluster.change.credentail.failed"),
     CLUSTER_SINGLE_MASTER_REPAIR_STARTED("cluster.single.master.repair.started"),
     CLUSTER_SINGLE_MASTER_REPAIR_FINISHED("cluster.single.master.repair.finished"),
+    // ZZZ: TODO Add more event here. Make use of flowMessageService(CloudbreakFlowMessageService).fireEventAndLog ... to log additional info of what is happening to the console.
     CLUSTER_SCALING_UP("cluster.scaling.up"),
     CLUSTER_RE_REGISTER_WITH_CLUSTER_PROXY("cluster.re.register.with.cluster.proxy"),
     CLUSTER_SCALED_UP("cluster.scaled.up"),
+    CLUSTER_SCALING_UP_VALT("cluster.scaling.up.valt"),
+    CLUSTER_SCALED_UP_VALT("cluster.scaling.up.valt"),
     CLUSTER_RUN_SERVICES("cluster.run.services"),
     CLUSTER_RUN_CONTAINERS("cluster.run.containers"),
     CLUSTER_GATEWAY_CHANGE_FAILED("cluster.gateway.change.failed"),

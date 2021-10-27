@@ -25,6 +25,7 @@ import com.sequenceiq.authorization.annotation.ResourceCrn;
 import com.sequenceiq.authorization.annotation.ResourceName;
 import com.sequenceiq.authorization.resource.AuthorizationResourceAction;
 import com.sequenceiq.cloudbreak.api.endpoint.v4.autoscales.AutoscaleV4Endpoint;
+import com.sequenceiq.cloudbreak.api.endpoint.v4.autoscales.request.InstanceGroupAdjustmentV4Request;
 import com.sequenceiq.cloudbreak.api.endpoint.v4.autoscales.request.UpdateStackV4Request;
 import com.sequenceiq.cloudbreak.api.endpoint.v4.autoscales.response.AuthorizeForAutoscaleV4Response;
 import com.sequenceiq.cloudbreak.api.endpoint.v4.autoscales.response.AutoscaleStackV4Responses;
@@ -93,6 +94,22 @@ public class AutoscaleV4Controller implements AutoscaleV4Endpoint {
     public void putStack(@TenantAwareParam @ResourceCrn String crn, String userId, @Valid UpdateStackV4Request updateRequest) {
         LOGGER.info("ZZZ: Received upscale request: {}", updateRequest);
         stackCommonService.putInDefaultWorkspace(crn, updateRequest);
+    }
+
+    @Override
+    @CheckPermissionByResourceCrn(action = AuthorizationResourceAction.SCALE_DATAHUB)
+    public void tmpStartNodes(@TenantAwareParam @ResourceCrn String crn, String userId, String hostGroup, Integer numNodes) {
+        LOGGER.info("ZZZ: Received tmpStartNodes request: crn: {}, hostGroup: {}, numNodes: {}", crn, hostGroup, numNodes);
+        UpdateStackV4Request updateStackV4Request = new UpdateStackV4Request();
+        updateStackV4Request.setWithClusterEvent(true);
+        updateStackV4Request.setUseAlternateMechanism(true);
+        InstanceGroupAdjustmentV4Request instanceGroupAdjustmentJson = new InstanceGroupAdjustmentV4Request();
+        instanceGroupAdjustmentJson.setScalingAdjustment(numNodes);
+        instanceGroupAdjustmentJson.setInstanceGroup(hostGroup);
+        updateStackV4Request.setInstanceGroupAdjustment(instanceGroupAdjustmentJson);
+        LOGGER.info("ZZZ: Constructed UpdateStackV4Request: {}", updateStackV4Request);
+
+        stackCommonService.putInDefaultWorkspace(crn, updateStackV4Request);
     }
 
     @Override

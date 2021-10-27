@@ -219,6 +219,15 @@ public class StackOperationService {
         try {
             return transactionService.required(() -> {
                 Stack stackWithLists = stackService.getByIdWithLists(stack.getId());
+
+                if (!stack.isAvailable()) {
+                    LOGGER.info("ZZZ: Stack status is not AVAILABLE. Resetting... it is at: {}", stackWithLists.getStatus());
+                    stackWithLists.getStackStatus().setStatus(AVAILABLE);
+                    clusterService.updateClusterStatusByStackId(stackWithLists.getId(), AVAILABLE, "fake update");
+                    stackUpdater.updateStackStatus(stackWithLists.getId(), DetailedStackStatus.PROVISIONED,
+                            String.format("fake update"));
+                }
+
                 updateNodeCountValidator.validateServiceRoles(stackWithLists, instanceGroupAdjustmentJson);
                 updateNodeCountValidator.validateStackStatus(stackWithLists);
                 updateNodeCountValidator.validateInstanceGroup(stackWithLists, instanceGroupAdjustmentJson.getInstanceGroup());

@@ -52,6 +52,13 @@ public interface AutoscaleV4Endpoint {
     @ApiOperation(value = StackOpDescription.PUT_BY_ID, produces = APPLICATION_JSON, notes = Notes.STACK_NOTES, nickname = "putStackForAutoscale")
     void putStack(@PathParam("crn") String crn, @PathParam("userId") String userId, @Valid UpdateStackV4Request updateRequest);
 
+    // ZZZ Temporary - since AutoScale seems to be broken on private stacks. GET to make the API invocation easier. Downscale won't be as simple.
+    @GET
+    @Path("/stack/startNodees/crn/{crn}/{userId}")
+    @Produces(APPLICATION_JSON)
+    @ApiOperation(value = "start_nodes_by_id", produces = APPLICATION_JSON, notes = "blah", nickname = "tmpStartNodes")
+    void tmpStartNodes(@PathParam("crn") String crn, @PathParam("userId") String userId, @QueryParam("hostGroup") String hostGroup, @QueryParam("numNodes") Integer numNodes);
+
     @PUT
     @Path("/stack/crn/{crn}/{userId}/cluster")
     @Produces(APPLICATION_JSON)

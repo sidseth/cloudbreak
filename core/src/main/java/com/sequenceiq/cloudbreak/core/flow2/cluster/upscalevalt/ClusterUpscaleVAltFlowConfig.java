@@ -9,9 +9,12 @@ import static com.sequenceiq.cloudbreak.core.flow2.cluster.upscalevalt.ClusterUp
 
 import java.util.List;
 
+import org.springframework.stereotype.Component;
+
 import com.sequenceiq.flow.core.config.AbstractFlowConfiguration;
 import com.sequenceiq.flow.core.config.RetryableFlowConfiguration;
 
+@Component
 public class ClusterUpscaleVAltFlowConfig extends AbstractFlowConfiguration<ClusterUpscaleVAltState, ClusterUpscaleVAltEvents> implements RetryableFlowConfiguration<ClusterUpscaleVAltEvents> {
 
 
@@ -21,11 +24,11 @@ public class ClusterUpscaleVAltFlowConfig extends AbstractFlowConfiguration<Clus
             .from(INIT_STATE)
                     .to(START_INSTANCE_STATE)
                     .event(CLUSTER_UPSCALE_VALT_TRIGGER_EVENT)
-                    .noFailureEvent()
+                    .defaultFailureEvent()
             .from(START_INSTANCE_STATE)
                     .to(CLUSTER_MANAGER_COMMISSION_STATE)
                     .event(CLUSTER_UPSCALE_NODES_STARTED_EVENT)
-                    .noFailureEvent()
+                    .defaultFailureEvent()
             .from(CLUSTER_MANAGER_COMMISSION_STATE)
                     .to(FINALIZE_UPSCALE_VALT_STATE)
                     .event(CLUSTER_UPSCALE_MANAGER_COMMISSIONED)
@@ -33,7 +36,7 @@ public class ClusterUpscaleVAltFlowConfig extends AbstractFlowConfiguration<Clus
             .from(FINALIZE_UPSCALE_VALT_STATE)
                     .to(FINAL_STATE)
                     .event(FINALIZED_EVENT)
-                    .noFailureEvent()
+                    .defaultFailureEvent()
             .build();
 
 

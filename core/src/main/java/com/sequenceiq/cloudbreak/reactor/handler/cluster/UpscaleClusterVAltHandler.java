@@ -4,17 +4,18 @@ import javax.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
-import com.sequenceiq.cloudbreak.reactor.api.event.cluster.UpscaleClusterResult;
+import com.sequenceiq.cloudbreak.reactor.api.event.cluster.UpscaleClusterVAltRequest;
+import com.sequenceiq.cloudbreak.reactor.api.event.orchestration.UpscaleVAltStartInstancesResult;
 import com.sequenceiq.flow.event.EventSelectorUtil;
 import com.sequenceiq.flow.reactor.api.handler.EventHandler;
-
-import com.sequenceiq.cloudbreak.reactor.api.event.cluster.UpscaleClusterRequest;
 
 import reactor.bus.Event;
 import reactor.bus.EventBus;
 
-public class UpscaleClusterVAltHandler implements EventHandler<UpscaleClusterRequest> {
+@Component
+public class UpscaleClusterVAltHandler implements EventHandler<UpscaleClusterVAltRequest> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UpscaleClusterVAltHandler.class);
 
@@ -23,14 +24,14 @@ public class UpscaleClusterVAltHandler implements EventHandler<UpscaleClusterReq
 
     @Override
     public String selector() {
-        return EventSelectorUtil.selector(UpscaleClusterRequest.class);
+        return EventSelectorUtil.selector(UpscaleClusterVAltRequest.class);
     }
 
     @Override
-    public void accept(Event<UpscaleClusterRequest> event) {
-        UpscaleClusterRequest request = event.getData();
+    public void accept(Event<UpscaleClusterVAltRequest> event) {
+        UpscaleClusterVAltRequest request = event.getData();
         LOGGER.info("ZZZ: UpscaleClusterHandler for alt scaling path: {}", event.getData().getResourceId());
-        UpscaleClusterResult result = new UpscaleClusterResult(request);
+        UpscaleVAltStartInstancesResult result = new UpscaleVAltStartInstancesResult(request.getResourceId());
         eventBus.notify(result.selector(), new Event<>(event.getHeaders(), result));
     }
 }

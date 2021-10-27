@@ -26,8 +26,8 @@ import com.sequenceiq.cloudbreak.domain.view.StackView;
 import com.sequenceiq.cloudbreak.logger.MDCBuilder;
 import com.sequenceiq.cloudbreak.reactor.api.event.StackFailureEvent;
 import com.sequenceiq.cloudbreak.reactor.api.event.cluster.ClusterUpscaleFailedConclusionRequest;
-import com.sequenceiq.cloudbreak.reactor.api.event.cluster.UpscaleClusterRequest;
 import com.sequenceiq.cloudbreak.reactor.api.event.cluster.UpscaleClusterVAltCommissionViaCMRequest;
+import com.sequenceiq.cloudbreak.reactor.api.event.cluster.UpscaleClusterVAltRequest;
 import com.sequenceiq.cloudbreak.reactor.api.event.orchestration.UpscaleClusterVAltCommissionViaCMResult;
 import com.sequenceiq.cloudbreak.reactor.api.event.orchestration.UpscaleVAltStartInstancesResult;
 import com.sequenceiq.cloudbreak.service.metrics.MetricType;
@@ -72,7 +72,7 @@ public class ClusterUpscaleVAltActions {
 
             @Override
             protected Selectable createRequest(ClusterUpscaleVAltContext context) {
-                return new UpscaleClusterRequest(context.getStackId(), context.getHostGroupName(), false, false);
+                return new UpscaleClusterVAltRequest(context.getStackId(), context.getHostGroupName());
             }
         };
     }
@@ -102,6 +102,7 @@ public class ClusterUpscaleVAltActions {
 
             @Override
             protected void doExecute(ClusterUpscaleVAltContext context, UpscaleClusterVAltCommissionViaCMResult payload, Map<Object, Object> variables) throws Exception {
+                LOGGER.info("ZZZ: Marking upscale as finished.");
                 clusterUpscaleFlowService.clusterUpscaleFinished(context.getStack(), context.getHostGroupName());
                 getMetricService().incrementMetricCounter(MetricType.CLUSTER_UPSCALE_SUCCESSFUL, context.getStack());
                 sendEvent(context, FINALIZED_EVENT.event(), payload);

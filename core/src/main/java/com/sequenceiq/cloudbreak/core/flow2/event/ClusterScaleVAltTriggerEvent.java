@@ -34,7 +34,7 @@ public class ClusterScaleVAltTriggerEvent extends StackEvent implements HostGrou
 
     @Override
     public String getHostGroupName() {
-        return null;
+        return hostGroup;
     }
 
     public Integer getAdjustment() {
