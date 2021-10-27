@@ -31,6 +31,11 @@ public class UpscaleClusterVAltCommissionHandler implements EventHandler<Upscale
     public void accept(Event<UpscaleClusterVAltCommissionViaCMRequest> event) {
         UpscaleClusterVAltCommissionViaCMRequest request = event.getData();
         LOGGER.info("ZZZ: UpscaleClusterVAltCommissionHandler for: {}, {}", event.getData().getResourceId(), event);
+
+        LOGGER.info("ZZZ: InstancesToCommissionViaCM: {}", request.getInstancesToCommission());
+        // TODO ZZZ: Loop in the CM classes ... commission probably needs to be implemented as explicit functionality, and does not exist today.
+
+
         UpscaleClusterVAltCommissionViaCMResult result = new UpscaleClusterVAltCommissionViaCMResult(request);
         eventBus.notify(result.selector(), new Event<>(event.getHeaders(), result));
     }

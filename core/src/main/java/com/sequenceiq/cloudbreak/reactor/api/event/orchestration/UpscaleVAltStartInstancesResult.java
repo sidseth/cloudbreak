@@ -1,14 +1,20 @@
 package com.sequenceiq.cloudbreak.reactor.api.event.orchestration;
 
+import java.util.List;
+
+import com.sequenceiq.cloudbreak.domain.stack.instance.InstanceMetaData;
 import com.sequenceiq.cloudbreak.reactor.api.event.StackEvent;
 
-// TODO ZZZ: This needs to includes the hostnames that were started, so that the same can be sent to CM
 public class UpscaleVAltStartInstancesResult extends StackEvent {
-    public UpscaleVAltStartInstancesResult(Long stackId) {
+
+    List<InstanceMetaData> startedInstances;
+
+    public UpscaleVAltStartInstancesResult(Long stackId, List<InstanceMetaData> startedInstances) {
         super(stackId);
+        this.startedInstances = startedInstances;
     }
 
-    public UpscaleVAltStartInstancesResult(String selector, Long stackId) {
-        super(selector, stackId);
+    public List<InstanceMetaData> getStartedInstances() {
+        return startedInstances;
     }
 }

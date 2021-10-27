@@ -233,9 +233,12 @@ public class StackOperationService {
                 updateNodeCountValidator.validateInstanceGroup(stackWithLists, instanceGroupAdjustmentJson.getInstanceGroup());
                 updateNodeCountValidator.validateScalabilityOfInstanceGroup(stackWithLists, instanceGroupAdjustmentJson);
                 updateNodeCountValidator.validateScalingAdjustment(instanceGroupAdjustmentJson, stackWithLists);
-                updateNodeCountValidator.validateInstanceStatuses(stackWithLists, instanceGroupAdjustmentJson);
+                // TODO ZZZ2: Instead of validating not in RUNNIG state, this validation needs to change to disallow everything except if instances are in STOPPED state.
+                //updateNodeCountValidator.validateInstanceStatuses(stackWithLists, instanceGroupAdjustmentJson);
+                LOGGER.info("ZZZ: cluster.isAvailable: {}, clusterStatus: {}", stackWithLists.getCluster().isAvailable(), stackWithLists.getCluster().getStatus());
                 if (withClusterEvent) {
-                    updateNodeCountValidator.validateClusterStatus(stackWithLists);
+                    // TODO ZZZ2: Figure out which states are acceptable for a start/stop operation.
+//                    updateNodeCountValidator.validateClusterStatus(stackWithLists);
                     updateNodeCountValidator.validateHostGroupAdjustment(
                             instanceGroupAdjustmentJson,
                             stackWithLists,

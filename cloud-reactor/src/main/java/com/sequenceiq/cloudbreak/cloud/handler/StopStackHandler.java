@@ -24,6 +24,8 @@ import reactor.bus.EventBus;
 @Component
 public class StopStackHandler implements CloudPlatformEventHandler<StopInstancesRequest> {
 
+    // ZZZ: Maybe this could be invoked directly, at least for testing.
+
     private static final Logger LOGGER = LoggerFactory.getLogger(StopStackHandler.class);
 
     @Inject

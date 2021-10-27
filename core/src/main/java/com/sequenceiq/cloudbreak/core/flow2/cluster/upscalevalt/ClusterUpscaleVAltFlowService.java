@@ -6,8 +6,9 @@ import static com.sequenceiq.cloudbreak.api.endpoint.v4.common.Status.UPDATE_IN_
 import static com.sequenceiq.cloudbreak.event.ResourceEvent.CLUSTER_RE_REGISTER_WITH_CLUSTER_PROXY;
 import static com.sequenceiq.cloudbreak.event.ResourceEvent.CLUSTER_SCALED_UP_VALT;
 import static com.sequenceiq.cloudbreak.event.ResourceEvent.CLUSTER_SCALING_FAILED;
-import static com.sequenceiq.cloudbreak.event.ResourceEvent.CLUSTER_SCALING_UP;
 import static com.sequenceiq.cloudbreak.event.ResourceEvent.CLUSTER_SCALING_UP_VALT;
+import static com.sequenceiq.cloudbreak.event.ResourceEvent.CLUSTER_SCALING_UP_VALT2;
+import static com.sequenceiq.cloudbreak.event.ResourceEvent.SCALING_VALT_NODES_STARTED;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -25,6 +26,7 @@ import org.springframework.stereotype.Component;
 import com.sequenceiq.cloudbreak.api.endpoint.v4.common.DetailedStackStatus;
 import com.sequenceiq.cloudbreak.api.endpoint.v4.stacks.base.InstanceStatus;
 import com.sequenceiq.cloudbreak.core.flow2.stack.CloudbreakFlowMessageService;
+import com.sequenceiq.cloudbreak.domain.stack.Stack;
 import com.sequenceiq.cloudbreak.domain.stack.cluster.host.HostGroup;
 import com.sequenceiq.cloudbreak.domain.stack.instance.InstanceMetaData;
 import com.sequenceiq.cloudbreak.domain.view.StackView;
@@ -33,6 +35,7 @@ import com.sequenceiq.cloudbreak.service.StackUpdater;
 import com.sequenceiq.cloudbreak.service.cluster.ClusterService;
 import com.sequenceiq.cloudbreak.service.hostgroup.HostGroupService;
 import com.sequenceiq.cloudbreak.service.stack.InstanceMetaDataService;
+import com.sequenceiq.cloudbreak.service.stack.flow.MetadataSetupService;
 
 @Component
 class ClusterUpscaleVAltFlowService {
@@ -53,16 +56,26 @@ class ClusterUpscaleVAltFlowService {
     @Inject
     private InstanceMetaDataService instanceMetaDataService;
 
-    void upscalingClusterManager(long stackId, String hostGroupName) {
+    @Inject
+    private MetadataSetupService metadataSetupService;
+
+    void startingInstances(long stackId, String hostGroupName) {
         clusterService.updateClusterStatusByStackId(stackId, UPDATE_IN_PROGRESS,
                 String.format("Scaling up (v-alt) host  group: %s", hostGroupName));
         flowMessageService.fireEventAndLog(stackId, UPDATE_IN_PROGRESS.name(), CLUSTER_SCALING_UP_VALT, hostGroupName);
     }
 
-    void upscaleCommissionNewNodes(long stackId, String hostGroupName) {
+    void instancesStarted(ClusterUpscaleVAltContext context, long stackId, List<InstanceMetaData> instancesStarted) {
+        Stack stack = context.getStack();
+        instancesStarted.stream().forEach(x -> instanceMetaDataService.updateInstanceStatus(x, InstanceStatus.SERVICES_RUNNING));
+        stackUpdater.updateStackStatus(stack.getId(), DetailedStackStatus.STARTED, "Instances: " + instancesStarted.size() + " started successfully.");
+        flowMessageService.fireEventAndLog(stack.getId(), AVAILABLE.name(), SCALING_VALT_NODES_STARTED, String.valueOf(instancesStarted.size()), instancesStarted.stream().map(x -> x.getInstanceId()).collect(Collectors.toList()).toString());
+    }
+
+    void upscaleCommissionNewNodes(long stackId, String hostGroupName, List<String> instanceIds) {
         clusterService.updateClusterStatusByStackId(stackId, UPDATE_IN_PROGRESS,
                 String.format("Commissioning via CM: %s", hostGroupName));
-        flowMessageService.fireEventAndLog(stackId, UPDATE_IN_PROGRESS.name(), CLUSTER_SCALING_UP, hostGroupName);
+        flowMessageService.fireEventAndLog(stackId, UPDATE_IN_PROGRESS.name(), CLUSTER_SCALING_UP_VALT2, hostGroupName, String.valueOf(instanceIds.size()), instanceIds.toString());
     }
 
     void reRegisterWithClusterProxy(long stackId) {

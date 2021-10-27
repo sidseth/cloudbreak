@@ -46,6 +46,7 @@ import com.sequenceiq.cloudbreak.service.cluster.ClusterService;
 import com.sequenceiq.cloudbreak.service.stack.InstanceMetaDataService;
 import com.sequenceiq.cloudbreak.service.stack.flow.MetadataSetupService;
 
+// ZZZ: For references on STOPPING / STARTING cloud infra
 @Service
 public class StackStartStopService {
     private static final Logger LOGGER = LoggerFactory.getLogger(StackStartStopService.class);
