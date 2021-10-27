@@ -184,12 +184,12 @@ public class ClusterUpscaleVAltActions {
         @Inject
         private StackUtil stackUtil;
 
+        @Inject
+        private StackToCloudStackConverter cloudStackConverter;
+
         AbstractClusterUpscaleVAltActions(Class<P> payloadClass) {
             super(payloadClass);
         }
-
-        @Inject
-        private StackToCloudStackConverter cloudStackConverter;
 
         @Override
         protected Object getFailurePayload(P payload, Optional<ClusterUpscaleVAltContext> flowContext, Exception ex) {
@@ -220,7 +220,8 @@ public class ClusterUpscaleVAltActions {
             CloudCredential cloudCredential = stackUtil.getCloudCredential(stack);
             CloudStack cloudStack = cloudStackConverter.convert(stack);
 
-            return new ClusterUpscaleVAltContext(flowParameters, stack, stackService.getViewByIdWithoutAuth(stack.getId()), cloudContext, cloudCredential, cloudStack, getHostgroupName(variables), getAdjustment(variables),
+            return new ClusterUpscaleVAltContext(flowParameters, stack, stackService.getViewByIdWithoutAuth(stack.getId()), cloudContext, cloudCredential, cloudStack,
+                    getHostgroupName(variables), getAdjustment(variables),
                     isSinglePrimaryGateway(variables), getPrimaryGatewayHostName(variables), getClusterManagerType(variables), isRestartServices(variables));
         }
 

@@ -16,12 +16,8 @@ enum ClusterUpscaleVAltState implements FlowState {
 
     private final Class<? extends RestartAction> restartAction = FillInMemoryStateStoreRestartAction.class;
 
-    public String boo() {
-        return "";
-    }
-
     @Override
     public Class<? extends RestartAction> restartAction() {
-        return null;
+        return restartAction;
     }
 }

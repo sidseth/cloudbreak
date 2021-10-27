@@ -32,7 +32,7 @@ public class ClusterUpscaleVAltFlowConfig extends AbstractFlowConfiguration<Clus
             .from(CLUSTER_MANAGER_COMMISSION_STATE)
                     .to(FINALIZE_UPSCALE_VALT_STATE)
                     .event(CLUSTER_UPSCALE_MANAGER_COMMISSIONED)
-                    .noFailureEvent()
+                    .defaultFailureEvent()
             .from(FINALIZE_UPSCALE_VALT_STATE)
                     .to(FINAL_STATE)
                     .event(FINALIZED_EVENT)
@@ -42,12 +42,6 @@ public class ClusterUpscaleVAltFlowConfig extends AbstractFlowConfiguration<Clus
 
     private static final FlowEdgeConfig<ClusterUpscaleVAltState, ClusterUpscaleVAltEvents> EDGE_CONFIG =
             new FlowEdgeConfig<>(INIT_STATE, FINAL_STATE, UPSCALE_V_ALT_FAILED_STATE, FAIL_HANDLED_EVENT);
-
-
-
-
-
-
 
 
 
