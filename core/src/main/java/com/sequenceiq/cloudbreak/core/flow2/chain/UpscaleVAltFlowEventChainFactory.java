@@ -9,7 +9,6 @@ import javax.inject.Inject;
 
 import org.springframework.stereotype.Component;
 
-import com.google.common.collect.Sets;
 import com.sequenceiq.cloudbreak.common.event.Selectable;
 import com.sequenceiq.cloudbreak.common.exception.NotFoundException;
 import com.sequenceiq.cloudbreak.common.type.ScalingType;
@@ -69,7 +68,8 @@ public class UpscaleVAltFlowEventChainFactory implements FlowEventChainFactory<S
                             stackView.getId(),
                             hostGroup.getName(),
                             event.getAdjustment(),
-                            Sets.newHashSet(event.getHostNames()),
+                            // TODO ZZZ: Figure this out... hostnames vs ids is a general mess
+                            null,
                             event.isSingleMasterGateway(),
                             event.isRestartServices(),
                             event.getClusterManagerType())
