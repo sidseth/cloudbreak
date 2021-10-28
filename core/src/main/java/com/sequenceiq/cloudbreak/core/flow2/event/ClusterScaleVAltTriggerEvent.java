@@ -12,7 +12,7 @@ public class ClusterScaleVAltTriggerEvent extends StackEvent implements HostGrou
 
     private final Integer adjustment;
 
-    private final Set<String> hostNames;
+    private final Set<Long> hostIds;
 
     private final boolean singlePrimaryGateway;
 
@@ -20,12 +20,12 @@ public class ClusterScaleVAltTriggerEvent extends StackEvent implements HostGrou
 
     private final ClusterManagerType clusterManagerType;
 
-    public ClusterScaleVAltTriggerEvent(String selector, Long stackId, String hostGroup, Integer adjustment, Set<String> hostNames, boolean singlePrimaryGateway,
+    public ClusterScaleVAltTriggerEvent(String selector, Long stackId, String hostGroup, Integer adjustment, Set<Long> hostIds, boolean singlePrimaryGateway,
             boolean restartServices, ClusterManagerType clusterManagerType) {
         super(selector, stackId);
         this.hostGroup = hostGroup;
         this.adjustment = adjustment;
-        this.hostNames = hostNames;
+        this.hostIds = hostIds;
         this.singlePrimaryGateway = singlePrimaryGateway;
         this.restartServices = restartServices;
         this.clusterManagerType = ClusterManagerType.CLOUDERA_MANAGER;
@@ -41,8 +41,8 @@ public class ClusterScaleVAltTriggerEvent extends StackEvent implements HostGrou
         return adjustment;
     }
 
-    public Set<String> getHostNames() {
-        return hostNames;
+    public Set<Long> getHostIds() {
+        return hostIds;
     }
 
     public boolean isSinglePrimaryGateway() {
@@ -62,7 +62,7 @@ public class ClusterScaleVAltTriggerEvent extends StackEvent implements HostGrou
         return "ClusterScaleVAltTriggerEvent{" +
                 "hostGroup='" + hostGroup + '\'' +
                 ", adjustment=" + adjustment +
-                ", hostNames=" + hostNames +
+                ", hostIds=" + hostIds +
                 ", singlePrimaryGateway=" + singlePrimaryGateway +
                 ", restartServices=" + restartServices +
                 ", clusterManagerType=" + clusterManagerType +
