@@ -219,6 +219,7 @@ public enum ResourceEvent {
     STACK_CM_DIAGNOSTICS_CLEANUP_RUNNING("stack.cm.diagnostics.cleanup.running"),
     STACK_CM_DIAGNOSTICS_COLLECTION_FINISHED("stack.cm.diagnostics.collection.finished"),
     STACK_CM_DIAGNOSTICS_COLLECTION_FAILED("stack.cm.diagnostics.collection.failed"),
+    STACK_CM_MIXED_PACKAGE_VERSIONS("stack.cm.mixed.package.versions"),
     STACK_LB_CREATE_ENTITY("stack.lb.update.create.entity"),
     STACK_LB_CREATE_CLOUD_RESOURCE("stack.lb.update.create.cloud.resource"),
     STACK_LB_COLLECT_METADATA("stack.lb.update.collect.metadata"),
