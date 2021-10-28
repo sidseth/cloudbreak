@@ -175,6 +175,7 @@ public class ScalingRequest implements Runnable {
             hostGroupAdjustmentJson.setWithStackUpdate(true);
             hostGroupAdjustmentJson.setHostGroup(hostGroup);
             hostGroupAdjustmentJson.setValidateNodeCount(false);
+            hostGroupAdjustmentJson.setUseAlternateMechanism(true);
             updateClusterJson.setHostGroupAdjustment(hostGroupAdjustmentJson);
             cloudbreakCrnClient.withInternalCrn().autoscaleEndpoint()
                     .putCluster(stackCrn, cluster.getClusterPertain().getUserId(), updateClusterJson);

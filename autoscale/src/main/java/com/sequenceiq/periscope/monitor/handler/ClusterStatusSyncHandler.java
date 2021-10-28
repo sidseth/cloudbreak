@@ -41,9 +41,14 @@ public class ClusterStatusSyncHandler implements ApplicationListener<ClusterStat
         LoggingUtils.buildMdcContext(cluster);
 
         StackStatusV4Response statusResponse = cloudbreakCommunicator.getStackStatusByCrn(cluster.getStackCrn());
-        boolean clusterAvailable = Optional.ofNullable(statusResponse.getStatus()).map(Status::isAvailable).orElse(false)
-                && Optional.ofNullable(statusResponse.getClusterStatus()).map(Status::isAvailable).orElse(false);
-        LOGGER.debug("Analysing CBCluster Status '{}' for Cluster '{}' ", statusResponse, cluster.getStackCrn());
+
+//        boolean clusterAvailable = Optional.ofNullable(statusResponse.getStatus()).map(Status::isAvailable).orElse(false)
+//                && Optional.ofNullable(statusResponse.getClusterStatus()).map(Status::isAvailable).orElse(false);
+
+        boolean clusterAvailable = Optional.ofNullable(statusResponse.getStatus()).map(Status::isAvailable).orElse(false);
+
+        LOGGER.debug("Analysing CBCluster Status '{}' for Cluster '{}. Available(Determined)={}' ", statusResponse, cluster.getStackCrn(), clusterAvailable);
+        LOGGER.debug("ZZZ: Analysing CBCluster Status '{}' for Cluster '{}. Available(Determined)={}' ", statusResponse, cluster.getStackCrn(), clusterAvailable);
 
         if (DELETE_COMPLETED.equals(statusResponse.getStatus())) {
             clusterService.removeById(autoscaleClusterId);

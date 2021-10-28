@@ -127,6 +127,7 @@ public class ClusterCommonService {
                     stack.getStatus()));
         }
         LOGGER.debug("Cluster host adjustment request received. Stack id: {} ", stackId);
+        LOGGER.debug("ZZZ: Cluster host adjustment request received. Stack id: {}, updateJson: {}", stackId, updateJson);
         Blueprint blueprint = stack.getCluster().getBlueprint();
         Optional<HostGroup> hostGroup = hostGroupService.findHostGroupInClusterByName(stack.getCluster().getId(),
                 updateJson.getHostGroupAdjustment().getHostGroup());
@@ -134,6 +135,7 @@ public class ClusterCommonService {
             throw new BadRequestException(String.format("Host group '%s' not found or not member of the cluster '%s'",
                     updateJson.getHostGroupAdjustment().getHostGroup(), stack.getName()));
         }
+        // TODO ZZZ NOW: Adjust the validation accordingly... here and the CM validation
         updateNodeCountValidator.validateScalabilityOfInstanceGroup(stack, updateJson.getHostGroupAdjustment());
         if (blueprintService.isClouderaManagerTemplate(blueprint)) {
             String accountId = Crn.safeFromString(stack.getResourceCrn()).getAccountId();
@@ -143,7 +145,12 @@ public class ClusterCommonService {
                     hostGroup.get(),
                     updateJson.getHostGroupAdjustment().getScalingAdjustment());
         }
-        return clusterOperationService.updateHosts(stackId, updateJson.getHostGroupAdjustment());
+        if (updateJson.getHostGroupAdjustment().getUseAlternateMechanism()) {
+            return clusterOperationService.updateHostsVAlt(stackId, updateJson.getHostGroupAdjustment());
+        } else {
+            return clusterOperationService.updateHosts(stackId, updateJson.getHostGroupAdjustment());
+        }
+
     }
 
     private FlowIdentifier recreateCluster(Stack stack, UpdateClusterV4Request updateCluster) throws TransactionExecutionException {

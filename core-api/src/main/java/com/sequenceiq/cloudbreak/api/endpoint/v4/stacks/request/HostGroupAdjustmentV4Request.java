@@ -26,6 +26,9 @@ public class HostGroupAdjustmentV4Request implements JsonEntity {
     @ApiModelProperty(HostGroupAdjustmentModelDescription.VALIDATE_NODE_COUNT)
     private Boolean validateNodeCount = Boolean.TRUE;
 
+    @ApiModelProperty("TODO New propery")
+    private Boolean useAlternateMechanism = Boolean.FALSE;
+
     @ApiModelProperty(HostGroupAdjustmentModelDescription.FORCED)
     private Boolean forced;
 
@@ -59,6 +62,14 @@ public class HostGroupAdjustmentV4Request implements JsonEntity {
 
     public void setValidateNodeCount(Boolean validateNodeCount) {
         this.validateNodeCount = validateNodeCount;
+    }
+
+    public Boolean getUseAlternateMechanism() {
+        return useAlternateMechanism;
+    }
+
+    public void setUseAlternateMechanism(Boolean useAlternateMechanism) {
+        this.useAlternateMechanism = useAlternateMechanism;
     }
 
     public void setForced(Boolean forced) {

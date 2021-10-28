@@ -148,6 +148,25 @@ public class ReactorFlowManager {
         return reactorNotifier.notify(stackId, selector, event);
     }
 
+    public FlowIdentifier triggerStackDownscaleVAlt(Long stackId, Map<String, Set<Long>> instanceIdsByHostgroupMap, boolean forced) {
+        // TODO ZZZ: This is not meant for multiple hostGroups ...
+        LOGGER.info("ZZZ: triggerStackDownscaleVAlt with instanceIdsByHostgroupMap={}", instanceIdsByHostgroupMap);
+        if (instanceIdsByHostgroupMap.size() != 1) {
+            throw new RuntimeException("Expected instancesIdsToHostGroupMap to contain exactly 1 host group. Found" + instanceIdsByHostgroupMap.size());
+        }
+
+        String hostGroup = instanceIdsByHostgroupMap.keySet().iterator().next();
+        Set<Long> privateIds = instanceIdsByHostgroupMap.get(hostGroup);
+        LOGGER.info("ZZZ: ids to remove. size:{}, ids:{}", privateIds.size(), privateIds);
+
+        String selector = FlowChainTriggers.FULL_DOWNSCALE_TRIGGER_V_ALT_EVENT;
+
+        ClusterDownscaleDetails details = new ClusterDownscaleDetails(forced, false);
+        ClusterAndStackDownscaleTriggerEvent event = new ClusterAndStackDownscaleTriggerEvent(selector, stackId, hostGroup, privateIds,
+                ScalingType.DOWNSCALE_TOGETHER,  new Promise<>(), details);
+        return reactorNotifier.notify(stackId, selector, event);
+    }
+
     public FlowIdentifier triggerStackRemoveInstances(Long stackId, Map<String, Set<Long>> instanceIdsByHostgroupMap, boolean forced) {
         String selector = FlowChainTriggers.FULL_DOWNSCALE_MULTIHOSTGROUP_TRIGGER_EVENT;
         ClusterDownscaleDetails details = new ClusterDownscaleDetails(forced, false);
@@ -213,6 +232,17 @@ public class ReactorFlowManager {
         ScalingType scalingType = hostGroupAdjustment.getWithStackUpdate() ? ScalingType.DOWNSCALE_TOGETHER : ScalingType.DOWNSCALE_ONLY_CLUSTER;
         Acceptable event = new ClusterAndStackDownscaleTriggerEvent(selector, stackId,
                 hostGroupAdjustment.getHostGroup(), hostGroupAdjustment.getScalingAdjustment(), scalingType);
+        return reactorNotifier.notify(stackId, selector, event);
+    }
+
+    public FlowIdentifier triggerClusterDownscaleVAlt(Long stackId, HostGroupAdjustmentV4Request hostGroupAdjustment) {
+        String select = FlowChainTriggers.FULL_DOWNSCALE_TRIGGER_V_ALT_EVENT;
+
+        String selector = FlowChainTriggers.FULL_DOWNSCALE_TRIGGER_V_ALT_EVENT;
+
+        ClusterDownscaleDetails details = new ClusterDownscaleDetails(hostGroupAdjustment.getForced(), false);
+        ClusterAndStackDownscaleTriggerEvent event = new ClusterAndStackDownscaleTriggerEvent(selector, stackId,
+                hostGroupAdjustment.getHostGroup(), hostGroupAdjustment.getScalingAdjustment(), ScalingType.DOWNSCALE_TOGETHER);
         return reactorNotifier.notify(stackId, selector, event);
     }
 

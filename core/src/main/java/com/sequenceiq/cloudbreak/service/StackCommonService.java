@@ -188,14 +188,17 @@ public class StackCommonService {
         return syncCm(stack, candidateImageUuids);
     }
 
-    public FlowIdentifier deleteMultipleInstancesInWorkspace(NameOrCrn nameOrCrn, Long workspaceId, Set<String> instanceIds, boolean forced) {
+    public FlowIdentifier deleteMultipleInstancesInWorkspace(NameOrCrn nameOrCrn, Long workspaceId, Set<String> instanceIds, boolean forced, boolean useAlt) {
         User user = userService.getOrCreate(restRequestThreadLocalService.getCloudbreakUser());
         Optional<Stack> stack = stackService.findStackByNameOrCrnAndWorkspaceId(nameOrCrn, workspaceId);
         if (stack.isEmpty()) {
             throw new BadRequestException("The requested Data Hub does not exist.");
         }
         validateStackIsNotDataLake(stack.orElse(null), instanceIds);
-        return stackOperationService.removeInstances(stack.orElse(null), workspaceId, instanceIds, forced, user);
+        return stackOperationService.removeInstances(stack.orElse(null), workspaceId, instanceIds, forced, user, useAlt);
+    }
+    public FlowIdentifier deleteMultipleInstancesInWorkspace(NameOrCrn nameOrCrn, Long workspaceId, Set<String> instanceIds, boolean forced) {
+        return deleteMultipleInstancesInWorkspace(nameOrCrn, workspaceId, instanceIds, forced, false);
     }
 
     public FlowIdentifier putStartInWorkspace(NameOrCrn nameOrCrn, Long workspaceId) {

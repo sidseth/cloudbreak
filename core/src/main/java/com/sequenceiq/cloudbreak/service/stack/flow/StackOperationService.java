@@ -107,12 +107,17 @@ public class StackOperationService {
         return flowManager.triggerStackRemoveInstance(stack.getId(), instanceGroupName, metaData.getPrivateId(), forced);
     }
 
-    public FlowIdentifier removeInstances(Stack stack, Long workspaceId, Collection<String> instanceIds, boolean forced, User user) {
+    public FlowIdentifier removeInstances(Stack stack, Long workspaceId, Collection<String> instanceIds, boolean forced, User user, boolean useVAlt) {
+        LOGGER.info("ZZZ: Received delete request for rawInstanceIds: {}", instanceIds);
         Map<String, Set<Long>> instanceIdsByHostgroupMap = new HashMap<>();
         for (String instanceId : instanceIds) {
             InstanceMetaData metaData = updateNodeCountValidator.validateInstanceForDownscale(instanceId, stack);
             instanceIdsByHostgroupMap.computeIfAbsent(metaData.getInstanceGroupName(), s -> new LinkedHashSet<>()).add(metaData.getPrivateId());
         }
+        LOGGER.info("ZZZ: removeInstances: instanceIds/hostnames received: {}", instanceIds);
+        LOGGER.info("ZZZ: removeInstances: computedInstanceIds: {}", instanceIdsByHostgroupMap);
+        // TODO ZZZ: Change validations when using vAlt
+        // TODO ZZZ NOW: Check validations
         if (!forced) {
             for (Map.Entry<String, Set<Long>> entry : instanceIdsByHostgroupMap.entrySet()) {
                 String instanceGroupName = entry.getKey();
@@ -122,7 +127,12 @@ public class StackOperationService {
                 updateNodeCountValidator.validateScalingAdjustment(instanceGroupName, scalingAdjustment, stack);
             }
         }
-        return flowManager.triggerStackRemoveInstances(stack.getId(), instanceIdsByHostgroupMap, forced);
+        if (useVAlt) {
+            LOGGER.info("ZZZ: Triggering scale-down v-alt");
+            return flowManager.triggerStackDownscaleVAlt(stack.getId(), instanceIdsByHostgroupMap, forced);
+        } else {
+            return flowManager.triggerStackRemoveInstances(stack.getId(), instanceIdsByHostgroupMap, forced);
+        }
     }
 
     public FlowIdentifier updateImage(ImageChangeDto imageChangeDto) {

@@ -236,17 +236,34 @@ public class ClusterOperationService {
         return volumeSet;
     }
 
+    public FlowIdentifier updateHostsVAlt(Long stackId, HostGroupAdjustmentV4Request hostGroupAdjustment) {
+        LOGGER.info("ZZZ: updateHostsVAlt. stackId:{}, adj: {}", stackId, hostGroupAdjustment);
+        Stack stack = stackService.getById(stackId);
+        Cluster cluster = stack.getCluster();
+        if (cluster == null) {
+            throw new BadRequestException(String.format("There is no cluster installed on stack '%s'.", stack.getName()));
+        }
+
+        clusterService.updateClusterStatusByStackId(stackId, UPDATE_REQUESTED);
+        stackUpdater.updateStackStatus(stackId, DetailedStackStatus.DOWNSCALE_REQUESTED,
+                "Requested node count for downscaling: " + abs(hostGroupAdjustment.getScalingAdjustment()));
+
+        return flowManager.triggerClusterDownscale(stackId, hostGroupAdjustment);
+    }
+
     public FlowIdentifier updateHosts(Long stackId, HostGroupAdjustmentV4Request hostGroupAdjustment) {
         Stack stack = stackService.getById(stackId);
         Cluster cluster = stack.getCluster();
         if (cluster == null) {
             throw new BadRequestException(String.format("There is no cluster installed on stack '%s'.", stack.getName()));
         }
+        // TODO ZZZ NOW: Check what this validation does, and whether it needs adjusting.
         boolean downscaleRequest = updateHostsValidator.validateRequest(stack, hostGroupAdjustment);
         if (downscaleRequest) {
             clusterService.updateClusterStatusByStackId(stackId, UPDATE_REQUESTED);
             stackUpdater.updateStackStatus(stackId, DetailedStackStatus.DOWNSCALE_REQUESTED,
                     "Requested node count for downscaling: " + abs(hostGroupAdjustment.getScalingAdjustment()));
+
             return flowManager.triggerClusterDownscale(stackId, hostGroupAdjustment);
         } else {
             stackUpdater.updateStackStatus(stackId, DetailedStackStatus.UPSCALE_REQUESTED,
