@@ -88,7 +88,8 @@ public class UpscaleClusterVAltHandler implements CloudPlatformEventHandler<Upsc
 
             eventBus.notify(result.selector(), new Event<>(event.getHeaders(), result));
         } catch (Exception e) {
-
+            //ZZZ : Do something useful here.
+            throw e;
         } finally {
             PerfLogger.get().opEnd__(MDCUtils.getPerfContextString(), "UpscaleStackHandlerVAlt.accept");
         }

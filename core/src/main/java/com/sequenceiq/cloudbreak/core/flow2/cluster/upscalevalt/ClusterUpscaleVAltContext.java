@@ -17,8 +17,6 @@ public class ClusterUpscaleVAltContext extends StackContext {
 
     private final Boolean singlePrimaryGateway;
 
-    private final String primaryGatewayHostName;
-
     private final ClusterManagerType clusterManagerType;
 
     private final Boolean restartServices;
@@ -27,12 +25,11 @@ public class ClusterUpscaleVAltContext extends StackContext {
 
     public ClusterUpscaleVAltContext(FlowParameters flowParameters, Stack stack, StackView stackView, CloudContext cloudContext, CloudCredential cloudCredentials,
             CloudStack cloudStack, String hostGroupName, Integer adjustment, Boolean singlePrimaryGateway,
-            String hostName, ClusterManagerType clusterManagerType, Boolean restartServices) {
+            ClusterManagerType clusterManagerType, Boolean restartServices) {
         super(flowParameters, stack, cloudContext, cloudCredentials, cloudStack);
         this.hostGroupName = hostGroupName;
         this.adjustment = adjustment;
         this.singlePrimaryGateway = singlePrimaryGateway;
-        primaryGatewayHostName = hostName;
         this.clusterManagerType = clusterManagerType;
         this.restartServices = restartServices;
         this.stackView = stackView;
@@ -48,10 +45,6 @@ public class ClusterUpscaleVAltContext extends StackContext {
 
     public Boolean isSinglePrimaryGateway() {
         return singlePrimaryGateway;
-    }
-
-    public String getPrimaryGatewayHostName() {
-        return primaryGatewayHostName;
     }
 
     public ClusterManagerType getClusterManagerType() {

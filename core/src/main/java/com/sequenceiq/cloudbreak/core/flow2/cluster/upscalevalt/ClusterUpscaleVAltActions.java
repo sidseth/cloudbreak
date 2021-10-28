@@ -67,15 +67,6 @@ public class ClusterUpscaleVAltActions {
                 variables.put(SINGLE_PRIMARY_GATEWAY, payload.isSinglePrimaryGateway());
                 variables.put(CLUSTER_MANAGER_TYPE, payload.getClusterManagerType());
                 variables.put(RESTART_SERVICES, payload.isRestartServices());
-                if (payload.isSinglePrimaryGateway()) {
-                    variables.put(HOST_NAME, getMasterHostname(payload));
-                }
-            }
-
-            private String getMasterHostname(ClusterScaleVAltTriggerEvent payload) {
-                return payload.getHostNames().iterator().hasNext()
-                        ? payload.getHostNames().iterator().next()
-                        : "";
             }
 
             @Override
@@ -86,7 +77,6 @@ public class ClusterUpscaleVAltActions {
 
             @Override
             protected Selectable createRequest(ClusterUpscaleVAltContext context) {
-
                 Stack stack = context.getStack();
                 List<InstanceMetaData> instanceMetaDataList = stack.getNotDeletedInstanceMetaDataList();
                 LOGGER.info("ZZZ: AllInstances: count={}, instances={}", instanceMetaDataList.size(), instanceMetaDataList);
@@ -165,8 +155,6 @@ public class ClusterUpscaleVAltActions {
 
         static final String SINGLE_PRIMARY_GATEWAY = "SINGLE_PRIMARY_GATEWAY";
 
-        static final String HOST_NAME = "HOST_NAME";
-
         static final String INSTALLED_COMPONENTS = "INSTALLED_COMPONENTS";
 
         static final String CLUSTER_MANAGER_TYPE = "CLUSTER_MANAGER_TYPE";
@@ -222,7 +210,7 @@ public class ClusterUpscaleVAltActions {
 
             return new ClusterUpscaleVAltContext(flowParameters, stack, stackService.getViewByIdWithoutAuth(stack.getId()), cloudContext, cloudCredential, cloudStack,
                     getHostgroupName(variables), getAdjustment(variables),
-                    isSinglePrimaryGateway(variables), getPrimaryGatewayHostName(variables), getClusterManagerType(variables), isRestartServices(variables));
+                    isSinglePrimaryGateway(variables), getClusterManagerType(variables), isRestartServices(variables));
         }
 
         private String getHostgroupName(Map<Object, Object> variables) {
@@ -235,10 +223,6 @@ public class ClusterUpscaleVAltActions {
 
         private Boolean isSinglePrimaryGateway(Map<Object, Object> variables) {
             return (Boolean) variables.get(SINGLE_PRIMARY_GATEWAY);
-        }
-
-        private String getPrimaryGatewayHostName(Map<Object, Object> variables) {
-            return (String) variables.get(HOST_NAME);
         }
 
         Map<String, String> getInstalledComponents(Map<Object, Object> variables) {
