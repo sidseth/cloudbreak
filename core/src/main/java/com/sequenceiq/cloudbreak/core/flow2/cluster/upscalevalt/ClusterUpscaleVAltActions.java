@@ -71,7 +71,7 @@ public class ClusterUpscaleVAltActions {
 
             @Override
             protected void doExecute(ClusterUpscaleVAltContext context, ClusterScaleVAltTriggerEvent payload, Map<Object, Object> variables) throws Exception {
-                clusterUpscaleFlowService.startingInstances(context.getStack().getId(), payload.getHostGroupName());
+                clusterUpscaleFlowService.startingInstances(context.getStack().getId(), payload.getHostGroupName(), payload.getAdjustment());
                 sendEvent(context);
             }
 
@@ -96,19 +96,22 @@ public class ClusterUpscaleVAltActions {
             @Override
             protected void doExecute(ClusterUpscaleVAltContext context, UpscaleVAltStartInstancesResult payload, Map<Object, Object> variables) throws Exception {
                 List<String> instanceIds = payload.getStartedInstances().stream().map(x -> x.getInstanceId()).collect(Collectors.toList());
+                clusterUpscaleFlowService.instancesStarted(context, context.getStack().getId(), payload.getStartedInstances());
                 clusterUpscaleFlowService.upscaleCommissionNewNodes(context.getStack().getId(), context.getHostGroupName(), instanceIds);
 
                 // ZZZ: TODO This needs more looking into. What actually needs to be updated into the databases ?
 //            Stack updatedStack = instanceMetaDataService.saveInstanceAndGetUpdatedStack(context.getStack(), instanceCountToCreate,
 //                    context.getInstanceGroupName(), true, context.getHostNames(), context.isRepair());
 
-                UpscaleClusterVAltCommissionViaCMRequest commissionRequest = new UpscaleClusterVAltCommissionViaCMRequest(context.getStack().getId(), context.getHostGroupName(), payload.getStartedInstances());
+                UpscaleClusterVAltCommissionViaCMRequest commissionRequest = new UpscaleClusterVAltCommissionViaCMRequest(context.getStack(), context.getHostGroupName(), payload.getStartedInstances());
                 sendEvent(context, commissionRequest);
 
             }
         };
     }
 
+
+    // TODO ZZZ 2 : Refer ClouderaManagerSetupService.waitForHosts
 
 
     @Bean(name = "FINALIZE_UPSCALE_VALT_STATE")
@@ -119,7 +122,7 @@ public class ClusterUpscaleVAltActions {
             protected void doExecute(ClusterUpscaleVAltContext context, UpscaleClusterVAltCommissionViaCMResult payload, Map<Object, Object> variables) throws Exception {
                 LOGGER.info("ZZZ: Marking upscale as finished.");
 
-                clusterUpscaleFlowService.clusterUpscaleFinished(context.getStackView(), context.getHostGroupName());
+                clusterUpscaleFlowService.clusterUpscaleFinished(context.getStackView(), context.getHostGroupName(), payload.getRequest().getInstancesToCommission());
                 getMetricService().incrementMetricCounter(MetricType.CLUSTER_UPSCALE_SUCCESSFUL, context.getStack());
                 sendEvent(context, FINALIZED_EVENT.event(), payload);
             }

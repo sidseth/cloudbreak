@@ -21,6 +21,10 @@ public interface ClusterDecomissionService {
 
     Set<String> decommissionClusterNodes(Map<String, InstanceMetaData> hostsToRemove);
 
+    Set<String> recommissionClusterNodes(Map<String, InstanceMetaData> hostsToRecommission);
+
+    void enterMaintenanceMode(Stack stack, Map<String, InstanceMetaData> hostList);
+
     void removeManagementServices();
 
     void deleteHostFromCluster(InstanceMetaData data);

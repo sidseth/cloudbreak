@@ -3,6 +3,7 @@ package com.sequenceiq.cloudbreak.cm.polling;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import javax.inject.Inject;
@@ -23,10 +24,10 @@ import com.sequenceiq.cloudbreak.cm.polling.task.ClouderaManagerApplyHostTemplat
 import com.sequenceiq.cloudbreak.cm.polling.task.ClouderaManagerBatchCommandsListenerTask;
 import com.sequenceiq.cloudbreak.cm.polling.task.ClouderaManagerCollectDiagnosticsListenerTask;
 import com.sequenceiq.cloudbreak.cm.polling.task.ClouderaManagerDecommissionHostListenerTask;
-import com.sequenceiq.cloudbreak.cm.polling.task.ClouderaManagerSyncApiCommandIdCheckerTask;
 import com.sequenceiq.cloudbreak.cm.polling.task.ClouderaManagerDeployClientConfigListenerTask;
 import com.sequenceiq.cloudbreak.cm.polling.task.ClouderaManagerGenerateCredentialsListenerTask;
 import com.sequenceiq.cloudbreak.cm.polling.task.ClouderaManagerHostStatusChecker;
+import com.sequenceiq.cloudbreak.cm.polling.task.ClouderaManagerHostStatusChecker2;
 import com.sequenceiq.cloudbreak.cm.polling.task.ClouderaManagerKerberosConfigureListenerTask;
 import com.sequenceiq.cloudbreak.cm.polling.task.ClouderaManagerParcelActivationListenerTask;
 import com.sequenceiq.cloudbreak.cm.polling.task.ClouderaManagerParcelDeletedListenerTask;
@@ -41,6 +42,7 @@ import com.sequenceiq.cloudbreak.cm.polling.task.ClouderaManagerStartManagementS
 import com.sequenceiq.cloudbreak.cm.polling.task.ClouderaManagerStartupListenerTask;
 import com.sequenceiq.cloudbreak.cm.polling.task.ClouderaManagerStopListenerTask;
 import com.sequenceiq.cloudbreak.cm.polling.task.ClouderaManagerStopManagementServiceListenerTask;
+import com.sequenceiq.cloudbreak.cm.polling.task.ClouderaManagerSyncApiCommandIdCheckerTask;
 import com.sequenceiq.cloudbreak.cm.polling.task.ClouderaManagerTemplateInstallationChecker;
 import com.sequenceiq.cloudbreak.cm.polling.task.ClouderaManagerUpgradeParcelDistributeListenerTask;
 import com.sequenceiq.cloudbreak.cm.polling.task.ClouderaManagerUpgradeParcelDownloadListenerTask;
@@ -86,6 +88,12 @@ public class ClouderaManagerPollingServiceProvider {
         LOGGER.debug("Waiting for Cloudera Manager startup. [Server address: {}]", stack.getClusterManagerIp());
         return pollCommandWithTimeListener(stack, apiClient, null, POLL_FOR_ONE_HOUR,
                 new ClouderaManagerStartupListenerTask(clouderaManagerApiPojoFactory, cloudbreakEventService));
+    }
+
+    public PollingResult startPollingCmHostStatusGood(Stack stack, ApiClient apiClient, Set<String> hostnamesToWaitFor) {
+        LOGGER.debug("ZZZ: Waiting for Cloudera Manager hosts to connect and become health. NodeCount={} [Server address: {}]", hostnamesToWaitFor, stack.getClusterManagerIp());
+        return pollCommandWithTimeListener(stack, apiClient, null, POLL_FOR_5_MINUTES,
+                new ClouderaManagerHostStatusChecker2(clouderaManagerApiPojoFactory, cloudbreakEventService, hostnamesToWaitFor));
     }
 
     public PollingResult startPollingCmHostStatus(Stack stack, ApiClient apiClient) {
@@ -169,10 +177,20 @@ public class ClouderaManagerPollingServiceProvider {
                 new ClouderaManagerApplyHostTemplateListenerTask(clouderaManagerApiPojoFactory, cloudbreakEventService));
     }
 
+    public PollingResult startPollingCmHostsRecommission(Stack stack, ApiClient apiClient, BigDecimal commandId) {
+        LOGGER.debug("ZZZ: Waiting for Cloudera Manager to re-commission host. [Server address: {}]", stack.getClusterManagerIp());
+        long timeout = POLL_FOR_5_MINUTES;
+        LOGGER.info("Cloudera Manager re-commission hosts command will have {} minutes timeout, " +
+                "since all affected nodes are already deleted from provider side.", TimeUnit.SECONDS.toMinutes(timeout));
+        return pollCommandWithTimeListener(stack, apiClient, commandId, timeout,
+                new SilentCMDecommissionHostListenerTask(clouderaManagerApiPojoFactory, cloudbreakEventService));
+    }
+
     public PollingResult startPollingCmHostDecommissioning(Stack stack, ApiClient apiClient, BigDecimal commandId,
             boolean onlyLostNodesAffected, int removableHostsCount) {
         LOGGER.debug("Waiting for Cloudera Manager to decommission host. [Server address: {}]", stack.getClusterManagerIp());
         if (onlyLostNodesAffected) {
+            // ZZZ: This is insane - 5 minutes per node?
             long timeout = POLL_FOR_10_MINUTES + removableHostsCount * POLL_FOR_5_MINUTES;
             LOGGER.info("Cloudera Manager decommission host command will have {} minutes timeout, " +
                     "since all affected nodes are already deleted from provider side.", TimeUnit.SECONDS.toMinutes(timeout));

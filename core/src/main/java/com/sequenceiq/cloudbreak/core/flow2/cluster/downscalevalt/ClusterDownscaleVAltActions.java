@@ -57,6 +57,9 @@ public class ClusterDownscaleVAltActions {
     @Inject
     private ClusterDownscaleVAltFlowService clusterDownscaleFlowService;
 
+    @Inject
+    private StackService stackService;
+
 
     @Bean(name = "CLUSTER_MANAGER_HOSTS_DECOMMISSION_STATE")
     public Action<?, ?> decommissionViaCmAction() {
@@ -80,7 +83,7 @@ public class ClusterDownscaleVAltActions {
 
             @Override
             protected Selectable createRequest(ClusterDownscaleVAltContext context) {
-                return new ClusterDownscaleVAltDecommissionViaCMRequest(context.getStack().getId(), context.getHostGroupName(), context.getHostIdsToRemove());
+                return new ClusterDownscaleVAltDecommissionViaCMRequest(context.getStack(), context.getHostGroupName(), context.getHostIdsToRemove());
             }
         };
     }
@@ -95,6 +98,8 @@ public class ClusterDownscaleVAltActions {
                 // TODO ZZZ: This needs to come from the previous step (payload) once it is implemented - i.e. the getHostIdsToRemove
                 clusterDownscaleFlowService.clusterDownscalingStoppingInstances(stack.getId(), context.getHostGroupName(), context.getHostIdsToRemove());
 
+                Set<Long> instancesToRemove = stackService.getPrivateIdsForHostNames(stack.getInstanceMetaDataAsList(), payload.getDecommissionedHostFqdns());
+
                 List<InstanceMetaData> instanceMetaDataList = stack.getNotDeletedInstanceMetaDataList();
                 LOGGER.info("ZZZ: AllInstances: count={}, instances={}", instanceMetaDataList.size(), instanceMetaDataList);
                 List<InstanceMetaData> instanceMetaDataForHg = instanceMetaDataList.stream().filter(x -> x.getInstanceGroupName().equals(context.getHostGroupName())).collect(Collectors.toList());
@@ -102,7 +107,7 @@ public class ClusterDownscaleVAltActions {
 
                 // TODO ZZZ: This needs to come from the previous step (payload) once it is implemented - i.e. the getHostIdsToRemove
                 ClusterDownscaleVAltStopInstancesRequest request = new ClusterDownscaleVAltStopInstancesRequest(context.getCloudContext(), context.getCloudCredential(), context.getCloudStack(), context.getStack(),
-                        context.getHostGroupName(), instanceMetaDataForHg, context.getHostIdsToRemove());
+                        context.getHostGroupName(), instanceMetaDataForHg, instancesToRemove);
 
                 sendEvent(context, request);
             }

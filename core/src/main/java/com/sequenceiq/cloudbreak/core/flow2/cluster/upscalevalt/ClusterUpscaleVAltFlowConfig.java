@@ -39,6 +39,7 @@ public class ClusterUpscaleVAltFlowConfig extends AbstractFlowConfiguration<Clus
                     .defaultFailureEvent()
             .build();
 
+    // TODO ZZZ : Add another step here which goes and waits for the status from CM itself.
 
     private static final FlowEdgeConfig<ClusterUpscaleVAltState, ClusterUpscaleVAltEvents> EDGE_CONFIG =
             new FlowEdgeConfig<>(INIT_STATE, FINAL_STATE, UPSCALE_V_ALT_FAILED_STATE, FAIL_HANDLED_EVENT);

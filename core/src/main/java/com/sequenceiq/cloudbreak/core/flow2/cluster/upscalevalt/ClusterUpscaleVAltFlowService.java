@@ -59,20 +59,22 @@ class ClusterUpscaleVAltFlowService {
     @Inject
     private MetadataSetupService metadataSetupService;
 
-    void startingInstances(long stackId, String hostGroupName) {
+    void startingInstances(long stackId, String hostGroupName, int nodeCount) {
         clusterService.updateClusterStatusByStackId(stackId, UPDATE_IN_PROGRESS,
                 String.format("Scaling up (v-alt) host  group: %s", hostGroupName));
-        flowMessageService.fireEventAndLog(stackId, UPDATE_IN_PROGRESS.name(), CLUSTER_SCALING_UP_VALT, hostGroupName);
+        flowMessageService.fireEventAndLog(stackId, UPDATE_IN_PROGRESS.name(), CLUSTER_SCALING_UP_VALT, hostGroupName, String.valueOf(nodeCount));
     }
 
     void instancesStarted(ClusterUpscaleVAltContext context, long stackId, List<InstanceMetaData> instancesStarted) {
         Stack stack = context.getStack();
-        instancesStarted.stream().forEach(x -> instanceMetaDataService.updateInstanceStatus(x, InstanceStatus.SERVICES_RUNNING));
+        // TODO ZZZ2 ... this needs to be a new state. CREATED doesn't really make much sense.
+        instancesStarted.stream().forEach(x -> instanceMetaDataService.updateInstanceStatus(x, InstanceStatus.CREATED));
         stackUpdater.updateStackStatus(stack.getId(), DetailedStackStatus.STARTED, "Instances: " + instancesStarted.size() + " started successfully.");
         flowMessageService.fireEventAndLog(stack.getId(), AVAILABLE.name(), SCALING_VALT_NODES_STARTED, String.valueOf(instancesStarted.size()), instancesStarted.stream().map(x -> x.getInstanceId()).collect(Collectors.toList()).toString());
     }
 
     void upscaleCommissionNewNodes(long stackId, String hostGroupName, List<String> instanceIds) {
+        // TODO ZZZ2 - Update instance state to SERVICES_RUNNING at this point, rather than when the instances start up
         clusterService.updateClusterStatusByStackId(stackId, UPDATE_IN_PROGRESS,
                 String.format("Commissioning via CM: %s", hostGroupName));
         flowMessageService.fireEventAndLog(stackId, UPDATE_IN_PROGRESS.name(), CLUSTER_SCALING_UP_VALT2, hostGroupName, String.valueOf(instanceIds.size()), instanceIds.toString());
@@ -89,12 +91,13 @@ class ClusterUpscaleVAltFlowService {
         flowMessageService.fireEventAndLog(stackId, UPDATE_IN_PROGRESS.name(), resourceEvent);
     }
 
-    void clusterUpscaleFinished(StackView stackView, String hostgroupName) {
+    void clusterUpscaleFinished(StackView stackView, String hostgroupName, List<InstanceMetaData> commissioned) {
         int numOfFailedHosts = updateMetadata(stackView, hostgroupName);
         boolean success = numOfFailedHosts == 0;
         if (success) {
             LOGGER.debug("Cluster upscaled v-alt successfully");
             clusterService.updateClusterStatusByStackId(stackView.getId(), AVAILABLE);
+            commissioned.stream().forEach(x -> instanceMetaDataService.updateInstanceStatus(x, InstanceStatus.SERVICES_RUNNING));
             stackUpdater.updateStackStatus(stackView.getId(), DetailedStackStatus.PROVISIONED, String.format("will this update the final state to available?"));
             flowMessageService.fireEventAndLog(stackView.getId(), AVAILABLE.name(), CLUSTER_SCALED_UP_VALT, hostgroupName);
         } else {

@@ -214,6 +214,71 @@ public class ClouderaManagerDecomissioner {
         }
     }
 
+    // TODO ZZZ Horrible hack: Easier to wire this into the decommissioner itself
+    public Set<String> recommissionNodes(Stack stack, Map<String, InstanceMetaData> hostsToRecommission, ApiClient client) {
+
+        HostsResourceApi hostsResourceApi = clouderaManagerApiFactory.getHostsResourceApi(client);
+        try {
+            ApiHostList hostRefList = hostsResourceApi.readHosts(null, null, SUMMARY_REQUEST_VIEW);
+            LOGGER.info("ZZZ: hostRefListFromCM: {}", hostRefList);
+            List<String> hostsAvailableForRecommission = hostRefList.getItems().stream()
+                    .filter(apiHostRef -> hostsToRecommission.containsKey(apiHostRef.getHostname()))
+                    //.filter(a -> a.getCommissionState().equals(ApiCommissionState.DECOMMISSIONED))
+                    .parallel()
+                    .map(ApiHost::getHostname)
+                    .collect(Collectors.toList());
+
+            LOGGER.info("ZZZ: Nodes available from initial list: {}", hostsAvailableForRecommission);
+
+            ClouderaManagerResourceApi apiInstance = clouderaManagerApiFactory.getClouderaManagerResourceApi(client);
+
+            ApiHostNameList body = new ApiHostNameList().items(hostsAvailableForRecommission);
+
+            ApiCommand apiCommand = apiInstance.hostsRecommissionAndExitMaintenanceModeCommand("recommission_with_start", body);
+            PollingResult pollingResult = clouderaManagerPollingServiceProvider
+                    .startPollingCmHostsRecommission(stack, client, apiCommand.getId());
+            if (isExited(pollingResult)) {
+                throw new CancellationException("Cluster was terminated while waiting for host decommission");
+            } else if (isTimeout(pollingResult)) {
+                throw new CloudbreakServiceException("Timeout while Cloudera Manager recommissioned hosts.");
+            }
+
+            return hostsAvailableForRecommission.stream()
+                    .map(hostsToRecommission::get)
+                    .map(InstanceMetaData::getDiscoveryFQDN)
+                    .collect(Collectors.toSet());
+        } catch (ApiException e) {
+            LOGGER.error("Failed to decommission hosts: {}", hostsToRecommission.keySet(), e);
+            throw new CloudbreakServiceException(e.getMessage(), e);
+        }
+    }
+
+    public void enterMaintenanceMode(Stack stack, Map<String, InstanceMetaData> hostList, ApiClient client) {
+        HostsResourceApi hostsResourceApi = clouderaManagerApiFactory.getHostsResourceApi(client);
+        String currentHostId = null;
+        int successCount = 0;
+        try {
+            ApiHostList hostRefList = hostsResourceApi.readHosts(null, null, SUMMARY_REQUEST_VIEW);
+            List<String> availableHostsIdsFromCm = hostRefList.getItems().stream()
+                    .filter(apiHostRef -> hostList.containsKey(apiHostRef.getHostname()))
+                    .parallel()
+                    .map(ApiHost::getHostId)
+                    .collect(Collectors.toList());
+
+
+            for (String hostId : availableHostsIdsFromCm) {
+                currentHostId = hostId;
+                hostsResourceApi.enterMaintenanceMode(hostId);
+                successCount++;
+            }
+
+
+        } catch (ApiException e) {
+            LOGGER.error("ZZZ: Failed while putting a node into maintenance mode. nodeId=" + currentHostId + ", successCount=" + successCount, e);
+            throw new CloudbreakServiceException(e.getMessage(), e);
+        }
+    }
+
     public Set<String> decommissionNodes(Stack stack, Map<String, InstanceMetaData> hostsToRemove, ApiClient client) {
         HostsResourceApi hostsResourceApi = clouderaManagerApiFactory.getHostsResourceApi(client);
         try {

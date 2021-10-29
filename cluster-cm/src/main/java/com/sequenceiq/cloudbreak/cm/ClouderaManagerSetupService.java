@@ -334,6 +334,7 @@ public class ClouderaManagerSetupService implements ClusterSetupService {
 
     @Override
     public void waitForHosts(Set<InstanceMetaData> hostsInCluster) throws ClusterClientInitException {
+        // ZZZ: This API seems to be completey useless, and does absolutely nothing.
         Cluster cluster = stack.getCluster();
         String user = cluster.getCloudbreakAmbariUser();
         String password = cluster.getCloudbreakAmbariPassword();
@@ -344,6 +345,20 @@ public class ClouderaManagerSetupService implements ClusterSetupService {
             throw new ClusterClientInitException(e);
         }
         clouderaManagerPollingServiceProvider.startPollingCmHostStatus(stack, client);
+    }
+
+    @Override
+    public void waitForHosts2(Set<InstanceMetaData> hostsInCluster) throws ClusterClientInitException {
+        Cluster cluster = stack.getCluster();
+        String user = cluster.getCloudbreakAmbariUser();
+        String password = cluster.getCloudbreakAmbariPassword();
+        ApiClient client;
+        try {
+            client = clouderaManagerApiClientProvider.getV31Client(stack.getGatewayPort(), user, password, clientConfig);
+        } catch (ClouderaManagerClientInitException e) {
+            throw new ClusterClientInitException(e);
+        }
+        clouderaManagerPollingServiceProvider.startPollingCmHostStatusGood(stack, client, hostsInCluster.stream().map(x -> x.getDiscoveryFQDN()).collect(Collectors.toUnmodifiableSet()));
     }
 
     @Override
