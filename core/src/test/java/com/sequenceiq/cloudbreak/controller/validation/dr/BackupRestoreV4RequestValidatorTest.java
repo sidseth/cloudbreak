@@ -1,7 +1,11 @@
 package com.sequenceiq.cloudbreak.controller.validation.dr;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.sequenceiq.cloudbreak.common.mappable.CloudPlatform;
 import com.sequenceiq.cloudbreak.domain.Blueprint;
@@ -9,12 +13,8 @@ import com.sequenceiq.cloudbreak.domain.stack.Stack;
 import com.sequenceiq.cloudbreak.domain.stack.cluster.Cluster;
 import com.sequenceiq.cloudbreak.validation.ValidationResult;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.MockitoAnnotations;
-import org.mockito.junit.jupiter.MockitoExtension;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 @ExtendWith(MockitoExtension.class)
 public class BackupRestoreV4RequestValidatorTest {
@@ -91,6 +91,26 @@ public class BackupRestoreV4RequestValidatorTest {
     }
 
     @Test
+    public void testGCPSuccessfulValidation() {
+        Stack stack = getStack(CloudPlatform.GCP.name());
+
+        ValidationResult validationResult = requestValidator.validate(stack, "gs://" + LOCATION, BACKUP_ID);
+        assertFalse(validationResult.hasError());
+
+        validationResult = requestValidator.validate(stack, "GS://" + LOCATION, BACKUP_ID);
+        assertFalse(validationResult.hasError());
+
+        validationResult = requestValidator.validate(stack, '/' + LOCATION, BACKUP_ID);
+        assertFalse(validationResult.hasError());
+
+        validationResult = requestValidator.validate(stack, LOCATION, BACKUP_ID);
+        assertFalse(validationResult.hasError());
+
+        validationResult = requestValidator.validate(stack, "hdfs://" + LOCATION, BACKUP_ID);
+        assertFalse(validationResult.hasError());
+    }
+
+    @Test
     public void testAWSWrongScheme() {
         Stack stack = getStack(CloudPlatform.AWS.name());
         String backupLocation = "abfs://" + LOCATION;
@@ -105,7 +125,16 @@ public class BackupRestoreV4RequestValidatorTest {
         String backupLocation = "s3://test/backup";
         ValidationResult validationResult = requestValidator.validate(stack, backupLocation, BACKUP_ID);
         assert validationResult.hasError();
-        assertEquals("Incorrect URL scheme for Azure cloud platform: " + backupLocation, validationResult.getFormattedErrors());
+        assertEquals("Incorrect URL scheme for AZURE cloud platform: " + backupLocation, validationResult.getFormattedErrors());
+    }
+
+    @Test
+    public void testGCPWrongScheme() {
+        Stack stack = getStack(CloudPlatform.GCP.name());
+        String backupLocation = "gz://test/backup";
+        ValidationResult validationResult = requestValidator.validate(stack, backupLocation, BACKUP_ID);
+        assert validationResult.hasError();
+        assertEquals("Incorrect URL scheme for GCP cloud platform: " + backupLocation, validationResult.getFormattedErrors());
     }
 
     @Test
