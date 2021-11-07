@@ -20,8 +20,10 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 
+import com.sequenceiq.cloudbreak.auth.crn.CrnResourceDescriptor;
 import com.sequenceiq.cloudbreak.auth.security.internal.AccountId;
 import com.sequenceiq.cloudbreak.jerseyclient.RetryAndMetrics;
+import com.sequenceiq.cloudbreak.validation.ValidCrn;
 import com.sequenceiq.flow.api.model.FlowIdentifier;
 import com.sequenceiq.flow.api.model.RetryableFlowResponse;
 import com.sequenceiq.freeipa.api.FreeIpaApi;
@@ -223,4 +225,12 @@ public interface FreeIpaV1Endpoint {
     @ApiOperation(value = FreeIpaOperationDescriptions.GENERATE_IMAGE_CATALOG, produces = MediaType.APPLICATION_JSON, notes = FreeIpaNotes.FREEIPA_NOTES,
             nickname = "generateImageCatalog")
     GenerateImageCatalogResponse generateImageCatalog(@QueryParam("environment") @NotEmpty String environmentCrn);
+
+    @PUT
+    @Path("/internal/upgrade_ccm")
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(value = FreeIpaOperationDescriptions.INTERNAL_UPGRADE_CCM_BY_ENVID_AND_ACCOUNTID, produces = MediaType.APPLICATION_JSON,
+            notes = FreeIpaNotes.FREEIPA_NOTES, nickname = "internalUpgradeCcmByEnvironmentV1")
+    void upgradeCcmInternal(@ValidCrn(resource = CrnResourceDescriptor.ENVIRONMENT) @QueryParam("environment") @NotEmpty String environmentCrn,
+            @QueryParam("accountId") @AccountId String accountId);
 }

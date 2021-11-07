@@ -34,7 +34,6 @@ import com.sequenceiq.freeipa.api.v1.freeipa.stack.model.list.ListFreeIpaRespons
 import com.sequenceiq.freeipa.api.v1.freeipa.stack.model.reboot.RebootInstancesRequest;
 import com.sequenceiq.freeipa.api.v1.freeipa.stack.model.repair.RepairInstancesRequest;
 import com.sequenceiq.freeipa.authorization.FreeIpaFiltering;
-import com.sequenceiq.freeipa.client.FreeIpaClientException;
 import com.sequenceiq.freeipa.controller.validation.AttachChildEnvironmentRequestValidator;
 import com.sequenceiq.freeipa.controller.validation.CreateFreeIpaRequestValidator;
 import com.sequenceiq.freeipa.service.freeipa.cert.root.FreeIpaRootCertificateService;
@@ -44,6 +43,7 @@ import com.sequenceiq.freeipa.service.stack.FreeIpaCreationService;
 import com.sequenceiq.freeipa.service.stack.FreeIpaDeletionService;
 import com.sequenceiq.freeipa.service.stack.FreeIpaDescribeService;
 import com.sequenceiq.freeipa.service.stack.FreeIpaListService;
+import com.sequenceiq.freeipa.service.stack.FreeIpaUpgradeCcmService;
 import com.sequenceiq.freeipa.service.stack.RepairInstancesService;
 import com.sequenceiq.freeipa.util.CrnService;
 
@@ -79,7 +79,7 @@ class FreeIpaV1ControllerTest {
     private CrnService crnService;
 
     @Mock
-    private CreateFreeIpaRequestValidator createFreeIpaRequestValidatior;
+    private CreateFreeIpaRequestValidator createFreeIpaRequestValidator;
 
     @Mock
     private AttachChildEnvironmentRequestValidator attachChildEnvironmentRequestValidator;
@@ -93,6 +93,9 @@ class FreeIpaV1ControllerTest {
     @Mock
     private ImageCatalogGeneratorService imageCatalogGeneratorService;
 
+    @Mock
+    private FreeIpaUpgradeCcmService upgradeCcmService;
+
     @BeforeEach
     void setUp() {
         lenient().when(crnService.getCurrentAccountId()).thenReturn(ACCOUNT_ID);
@@ -101,7 +104,7 @@ class FreeIpaV1ControllerTest {
     @Test
     void create() {
         CreateFreeIpaRequest freeIpaRequest = new CreateFreeIpaRequest();
-        when(createFreeIpaRequestValidatior.validate(freeIpaRequest)).thenReturn(ValidationResult.builder().build());
+        when(createFreeIpaRequestValidator.validate(freeIpaRequest)).thenReturn(ValidationResult.builder().build());
         assertNull(underTest.create(freeIpaRequest));
 
         verify(creationService, times(1)).launchFreeIpa(freeIpaRequest, ACCOUNT_ID);
@@ -120,7 +123,7 @@ class FreeIpaV1ControllerTest {
     @Test
     void createValidationError() {
         CreateFreeIpaRequest freeIpaRequest = new CreateFreeIpaRequest();
-        when(createFreeIpaRequestValidatior.validate(freeIpaRequest)).thenReturn(ValidationResult.builder().error("error").build());
+        when(createFreeIpaRequestValidator.validate(freeIpaRequest)).thenReturn(ValidationResult.builder().error("error").build());
         BadRequestException badRequestException = assertThrows(BadRequestException.class, () -> underTest.create(freeIpaRequest));
         assertEquals("error", badRequestException.getMessage());
         verify(creationService, never()).launchFreeIpa(freeIpaRequest, ACCOUNT_ID);
@@ -212,7 +215,7 @@ class FreeIpaV1ControllerTest {
     }
 
     @Test
-    void reboot() throws FreeIpaClientException {
+    void reboot() {
         when(crnService.getCurrentAccountId()).thenReturn(ACCOUNT_ID);
         RebootInstancesRequest rebootInstancesRequest = new RebootInstancesRequest();
 
@@ -221,7 +224,7 @@ class FreeIpaV1ControllerTest {
     }
 
     @Test
-    void repair() throws FreeIpaClientException {
+    void repair() {
         when(crnService.getCurrentAccountId()).thenReturn(ACCOUNT_ID);
         RepairInstancesRequest request = new RepairInstancesRequest();
 
@@ -237,4 +240,11 @@ class FreeIpaV1ControllerTest {
 
         verify(imageCatalogGeneratorService).generate(ENVIRONMENT_CRN, ACCOUNT_ID);
     }
+
+    @Test
+    void upgradeCcmInternalTest() {
+        underTest.upgradeCcmInternal(ENVIRONMENT_CRN, ACCOUNT_ID);
+        verify(upgradeCcmService).upgradeCcm(ENVIRONMENT_CRN, ACCOUNT_ID);
+    }
+
 }
