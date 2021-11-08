@@ -231,7 +231,7 @@ public class ClusterTemplateService extends AbstractWorkspaceAwareResourceServic
 
     @Override
     public Set<ClusterTemplate> findAllByWorkspace(Workspace workspace) {
-        updateDefaultClusterTemplates(workspace);
+        updateDefaultClusterTemplatesIfNeed(workspace);
         return clusterTemplateRepository.findAllByNotDeletedInWorkspace(workspace.getId());
     }
 
@@ -275,7 +275,7 @@ public class ClusterTemplateService extends AbstractWorkspaceAwareResourceServic
 
     public void updateDefaultClusterTemplates(long workspaceId) {
         Workspace workspace = getWorkspaceService().getByIdForCurrentUser(workspaceId);
-        updateDefaultClusterTemplates(workspace);
+        updateDefaultClusterTemplatesIfNeed(workspace);
     }
 
     private Optional<String> getMessageIfBlueprintIsInvalidInCluster(ClusterTemplate clusterTemplate) {
@@ -337,19 +337,23 @@ public class ClusterTemplateService extends AbstractWorkspaceAwareResourceServic
         }
     }
 
-    private void updateDefaultClusterTemplates(Workspace workspace) {
+    private void updateDefaultClusterTemplatesIfNeed(Workspace workspace) {
         Set<ClusterTemplate> clusterTemplates = clusterTemplateRepository.findAllByNotDeletedInWorkspace(workspace.getId());
         if (clusterTemplateLoaderService.isDefaultClusterTemplateUpdateNecessaryForUser(clusterTemplates)) {
-            LOGGER.debug("Modifying clusterDefinitions based on the defaults for the '{} ({})' workspace.", workspace.getName(), workspace.getId());
-            Collection<ClusterTemplate> outdatedTemplates = clusterTemplateLoaderService.collectOutdatedTemplatesInDb(clusterTemplates);
-            LOGGER.debug("Outdated clusterDefinitions collected: '{}'.", outdatedTemplates.size());
-            delete(new HashSet<>(outdatedTemplates));
-            LOGGER.debug("Outdated clusterDefinitions deleted: '{}'.", outdatedTemplates.size());
-            clusterTemplates = clusterTemplateRepository.findAllByNotDeletedInWorkspace(workspace.getId());
-            LOGGER.debug("None deleted clusterDefinitions collected: '{}'.", clusterTemplates.size());
-            clusterTemplateLoaderService.loadClusterTemplatesForWorkspace(clusterTemplates, workspace, this::createAll);
-            LOGGER.debug("ClusterDefinition modifications finished based on the defaults for '{}' workspace.", workspace.getId());
+            updateDefaultClusterTemplatesWithSync(workspace, clusterTemplates);
         }
+    }
+
+    private synchronized void updateDefaultClusterTemplatesWithSync(Workspace workspace, Set<ClusterTemplate> clusterTemplates) {
+        LOGGER.debug("Modifying clusterDefinitions based on the defaults for the '{} ({})' workspace.", workspace.getName(), workspace.getId());
+        Collection<ClusterTemplate> outdatedTemplates = clusterTemplateLoaderService.collectOutdatedTemplatesInDb(clusterTemplates);
+        LOGGER.debug("Outdated clusterDefinitions collected: '{}'.", outdatedTemplates.size());
+        delete(new HashSet<>(outdatedTemplates));
+        LOGGER.debug("Outdated clusterDefinitions deleted: '{}'.", outdatedTemplates.size());
+        clusterTemplates = clusterTemplateRepository.findAllByNotDeletedInWorkspace(workspace.getId());
+        LOGGER.debug("None deleted clusterDefinitions collected: '{}'.", clusterTemplates.size());
+        clusterTemplateLoaderService.loadClusterTemplatesForWorkspace(clusterTemplates, workspace, this::createAll);
+        LOGGER.debug("ClusterDefinition modifications finished based on the defaults for '{}' workspace.", workspace.getId());
     }
 
     private Collection<ClusterTemplate> createAll(Iterable<ClusterTemplate> clusterTemplates) {
